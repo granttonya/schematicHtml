@@ -39,19 +39,28 @@ header .toolbar button.active{outline:2px solid #3a4a7a}
 .footer{font-size:12px;color:var(--muted);text-align:center;margin-top:4px}
 .splitter{background:transparent;position:relative;z-index:3}.splitter:hover::after{background:#2a3145}.splitter::after{content:"";position:absolute;background:#1b2233;border-radius:3px;opacity:.9}
 .splitter.v{cursor:col-resize}.splitter.v.left{grid-area:splitL}.splitter.v.right{grid-area:splitR}.splitter.v::after{width:3px;top:12px;bottom:12px;left:calc(50% - 1.5px)}
-.splitter.h{grid-area:splitB;cursor:row-resize position:relative; }.splitter.h::after{height:3px;left:12px;right:12px;top:calc(50% - 1.5px)}
+.splitter.h{grid-area:splitB;cursor:row-resize;position:relative}.splitter.h::after{height:3px;left:12px;right:12px;top:calc(50% - 1.5px)}
 #leftPanel{grid-area:left}#rightPanel{grid-area:right}#bottomPanel{grid-area:bottom}
-.canvasWrap{grid-area:main;position:relative;background:#0b0d12;border:1px solid #1f2533;border-radius:10px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.25);min-width:0;min-height:0}
-canvas{position:absolute;inset:0;max-width:100%;max-height:100%;image-rendering:crisp-edges;image-rendering:pixelated;background:#fff}
-#overlay{background:transparent!important;pointer-events:none}
-.labelEditor{position:absolute;z-index:100;display:none;min-width:140px;border-radius:6px;border:1px solid #2a3145;background:#0f141f;color:#e6eefc;outline:none;padding:6px 8px;font:16px system-ui,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.35)}
-.palette{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}.sym{border:1px solid #3a4a7a;border-radius:8px;background:#f4f7ff;padding:8px;display:flex;align-items:center;justify-content:center;cursor:grab;box-shadow:inset 0 0 0 1px rgba(255,255,255,.6)}.sym img{width:40px;height:40px}.sym:hover{background:#eaf1ff}.sym.dragging{opacity:.6}.symLabel{text-align:center;font-size:11px;color:#9fb0c3;margin-top:4px}
-.pass{color:var(--ok)}.fail{color:var(--bad)}
-.hide-left{--left:0}.hide-right{--right:0}.hide-bottom{--bottom:0}.hide-left #leftPanel,.hide-left .splitter.v.left{display:none}.hide-right #rightPanel,.hide-right .splitter.v.right{display:none}.hide-bottom #bottomPanel,.hide-bottom .splitter.h{display:none}
-#leftPanel #panToggle, #leftPanel #highlightToggle, #leftPanel #textModeBtn, #leftPanel #eraserToggle, #leftPanel #lineToggle, #leftPanel #netLabelBtn, #leftPanel #contToggleBtn, #leftPanel #toolPan, #leftPanel #toolHighlight, #leftPanel #toolText, #leftPanel #toolEraser, #leftPanel #toolLine, #leftPanel #toolNet, #leftPanel #toolCont{display:none !important}
-#leftPanel .toolstrip, #leftPanel [data-section='tools'], #leftPanel .tools-group{display:none !important}
-#leftPanel h2, #leftPanel h3 { }
-
+.canvasWrap{grid-area:main;position:relative;background:#0b0d12;border:1px solid #1f2533;border-radius:10px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.25);min-width:0;min-height:0;}
+canvas{position:absolute;inset:0;max-width:100%;max-height:100%;image-rendering:crisp-edges;image-rendering:pixelated;background:#fff;}
+#overlay{background:transparent!important;pointer-events:none;}
+.labelEditor{position:absolute;z-index:100;display:none;min-width:140px;border-radius:6px;border:1px solid #2a3145;background:#0f141f;color:#e6eefc;outline:none;padding:6px 8px;font:16px system-ui,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.35);}
+.palette{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;}
+.sym{border:1px solid #3a4a7a;border-radius:8px;background:#f4f7ff;padding:8px;display:flex;align-items:center;justify-content:center;cursor:grab;box-shadow:inset 0 0 0 1px rgba(255,255,255,.6);}
+.sym img{width:40px;height:40px;}
+.sym:hover{background:#eaf1ff;}
+.sym.dragging{opacity:.6;}
+.symLabel{text-align:center;font-size:11px;color:#9fb0c3;margin-top:4px;}
+.pass{color:var(--ok);}
+.fail{color:var(--bad);}
+.hide-left{--left:0;}
+.hide-right{--right:0;}
+.hide-bottom{--bottom:0;}
+.hide-left #leftPanel,.hide-left .splitter.v.left{display:none;}
+.hide-right #rightPanel,.hide-right .splitter.v.right{display:none;}
+.hide-bottom #bottomPanel,.hide-bottom .splitter.h{display:none;}
+#leftPanel #panToggle, #leftPanel #highlightToggle, #leftPanel #textModeBtn, #leftPanel #eraserToggle, #leftPanel #lineToggle, #leftPanel #netLabelBtn, #leftPanel #contToggleBtn, #leftPanel #toolPan, #leftPanel #toolHighlight, #leftPanel #toolText, #leftPanel #toolEraser, #leftPanel #toolLine, #leftPanel #toolNet, #leftPanel #toolCont{display:none !important;}
+#leftPanel .toolstrip, #leftPanel [data-section='tools'], #leftPanel .tools-group{display:none !important;}
 /* Cleanup markers overlay style (drawn on canvas) */
 
 
@@ -115,8 +124,8 @@ header .toolbar-center{
 .panel{position:relative}
 .chev{position:absolute; display:grid; place-items:center; width:26px; height:42px;
   background:var(--btn); border:1px solid #2a3145; border-radius:10px; opacity:.9; cursor:pointer;
-  box-shadow:0 6px 16px rgba(0,0,0,.25); transition:opacity .2s, transform .2s z-index:50; }
-.chev:hover{opacity:1}
+  box-shadow:0 6px 16px rgba(0,0,0,.25); transition:opacity .2s, transform .2s; z-index:50;}
+.chev:hover{opacity:1;}
 /* within panels */
 #leftPanel .chev-left{ right:-10px; top:50%; transform:translateY(-50%); }
 #rightPanel .chev-right{ left:-10px; top:50%; transform:translateY(-50%); }
@@ -124,10 +133,10 @@ header .toolbar-center{
 /* small caret icons */
 .chev svg, .reveal svg{ width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
 
-/* edge reveal handles (visible when a side is hidden) */
-.reveal{position:absolute; display:none; place-items:center; width:22px; height:46px;
-  background:var(--btn); border:1px solid #2a3145; border-radius:10px; cursor:pointer; opacity:.85 z-index:50; }
-.reveal:hover{opacity:1}
+ /* edge reveal handles (visible when a side is hidden) */
+ .reveal{position:absolute; display:none; place-items:center; width:22px; height:46px;
+  background:var(--btn); border:1px solid #2a3145; border-radius:10px; cursor:pointer; opacity:.85; z-index:50;}
+ .reveal:hover{opacity:1;}
 .reveal.left{ left:6px; top:calc(var(--headerH) + 50%); transform:translateY(-50%); }
 .reveal.right{ right:6px; top:calc(var(--headerH) + 50%); transform:translateY(-50%); }
 .reveal.bottom{ left:50%; bottom:8px; transform:translateX(-50%); height:22px }
@@ -253,7 +262,8 @@ header{padding:8px 12px}
       </div>
       <div class="row"><label for="eraserSize">Eraser size (px)</label><output id="eraserSizeVal">10</output></div>
       <input id="eraserSize" type="range" min="2" max="48" step="1" value="10">
-      <div class="hint">Eraser clears the <b>active layer</b>. Hold mouse and scrub to remove highlight pixels. Use <b>Line</b> to draw straight highlight segments.</div>
+      <div class="row"><label class="inline" style="display:flex;align-items:center;gap:6px;"><input id="eraseImageTarget" type="checkbox"> Erase base image</label></div>
+      <div class="hint">Eraser clears the <b>active layer</b>. Enable “Erase base image” to remove pixels from the loaded image. Use <b>Line</b> to draw straight highlight segments.</div>
     </div>
 
     <div>
@@ -639,7 +649,7 @@ const color=document.getElementById('color'); const autoColorBtn=document.getEle
 const thickness=document.getElementById('thickness'); const thicknessVal=document.getElementById('thicknessVal'); const limit=document.getElementById('limit'); const limitVal=document.getElementById('limitVal');
 const zoom=document.getElementById('zoom'); const zoomVal=document.getElementById('zoomVal'); const clearBtn=document.getElementById('clear'); const meta=document.getElementById('meta');
 const highlightToggle=document.getElementById('highlightToggle'); const textModeBtn=document.getElementById('textMode'); const eraserToggle=document.getElementById('eraserToggle'); const lineToggle=document.getElementById('lineToggle');
-const eraserSize=document.getElementById('eraserSize'); const eraserSizeVal=document.getElementById('eraserSizeVal');
+const eraserSize=document.getElementById('eraserSize'); const eraserSizeVal=document.getElementById('eraserSizeVal'); const eraseImageTarget=document.getElementById('eraseImageTarget');
 const labelColor=document.getElementById('labelColor'); const labelSize=document.getElementById('labelSize'); const labelSizeVal=document.getElementById('labelSizeVal');
 const labelEditor=document.getElementById('labelEditor'); const showAnnotationsChk=document.getElementById('showAnnotations'); const showNetLabelsChk=document.getElementById('showNetLabels');
 const clearActiveBtn=document.getElementById('clearActive'); const syncLayerStyleBtn=document.getElementById('syncLayerStyle');
@@ -848,8 +858,8 @@ view.addEventListener('mousedown',(e)=>{
   if(e.button===1) e.preventDefault();
   if(spaceHeld||panMode||e.button===1){ hideEditor(); panning=true; lastMouse={x:e.clientX,y:e.clientY}; return; }
   const [ix,iy]=screenToImg(e.offsetX,e.offsetY);
-  if(eraserMode){ eraseAt(ix,iy,+eraserSize.value); redrawOverlay(); return; }
-  if(lineMode){ const [sx,sy]=snapPosition(ix,iy); lineStart={x:sx,y:sy}; lineEnd={x:sx,y:sy}; linePreview={x1:sx,y1:sy,x2:sx,y2:sy}; redrawOverlay(); return; }
+  if(eraserMode){ suppressNextClick=true; if(eraseImageTarget?.checked){ eraseImageAt(ix,iy,+eraserSize.value); drawBase(); } else { eraseAt(ix,iy,+eraserSize.value); } redrawOverlay(); return; }
+  if(lineMode){ const [sx,sy]=snapPosition(ix,iy); lineStart={x:sx,y:sy}; lineEnd={x:sx,y:sy}; linePreview={x1:lineStart.x,y1:lineStart.y,x2:sx,y2:sy}; redrawOverlay(); return; }
   let hit = hitTestSymbol(ix,iy);
   if(hit>=0){ selectedSym=hit; selectedSeg=-1; selectedAnn=-1; draggingSym=true; suppressNextClick=true; syncSymbolUI(); redrawOverlay(); return; }
   hit = hitTestAnnotation(ix,iy);
@@ -861,7 +871,7 @@ window.addEventListener('mousemove',(e)=>{
   if(panning){ const dx=e.clientX-lastMouse.x, dy=e.clientY-lastMouse.y; lastMouse={x:e.clientX,y:e.clientY}; panX+=dx; panY+=dy; drawBase(); redrawOverlay(); }
   if(!imgLoaded||!mouseDown) return;
   const rect=view.getBoundingClientRect(); const [ix,iy]=screenToImg(e.clientX-rect.left, e.clientY-rect.top);
-  if(eraserMode){ eraseLineTo(ix,iy,+eraserSize.value); redrawOverlay(); }
+  if(eraserMode){ if(eraseImageTarget?.checked){ eraseImageLineTo(ix,iy,+eraserSize.value); drawBase(); } else { eraseLineTo(ix,iy,+eraserSize.value); } redrawOverlay(); }
   else if(lineMode&&lineStart){ const [sx,sy]=snapPosition(ix,iy); lineEnd={x:sx,y:sy}; linePreview={x1:lineStart.x,y1:lineStart.y,x2:sx,y2:sy}; redrawOverlay(); }
   else if(draggingSym&&selectedSym>=0){ const s=symbols[selectedSym]; const [sx,sy]=snapPosition(ix,iy); s.x=sx; s.y=sy; if(symLockLayer.checked) s.layer=activeLayer; redrawOverlay(); }
   else if(draggingAnn&&selectedAnn>=0){ const a=annotations[selectedAnn]; let nx=ix-annOffset.dx, ny=iy-annOffset.dy; [nx,ny]=snapPosition(nx,ny); a.x=nx; a.y=ny; redrawOverlay(); }
@@ -1343,6 +1353,48 @@ function distPointToSegment(px,py,x1,y1,x2,y2){
 
 function eraseAt(ix,iy,size){ if(!layers.length) return; clearMask(layers[activeLayer].mask, Math.round(ix), Math.round(iy), Math.max(1, Math.round(size/2))); }
 function eraseLineTo(ix,iy,size){ if(!layers.length) return; if(!lastErase){ lastErase={x:ix,y:iy}; eraseAt(ix,iy,size); return; } const steps=Math.ceil(Math.hypot(ix-lastErase.x, iy-lastErase.y) / 1); for(let t=0;t<=steps;t++){ const x=lerp(lastErase.x,ix,t/steps); const y=lerp(lastErase.y,iy,t/steps); eraseAt(x,y,size); } lastErase={x:ix,y:iy}; }
+
+// Erase pixels from the base image (paint white) and keep rawImageData in sync
+function eraseImageAt(ix,iy,size){
+  if(!imgLoaded || !imgBitmap || !rawImageData) return;
+  const r = Math.max(1, Math.round(size/2));
+  const ctx = imgBitmap.getContext('2d');
+  if(!ctx) return;
+  ctx.save();
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(ix, iy, r, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+  // update rawImageData region to white
+  const x0 = Math.max(0, Math.round(ix - r));
+  const y0 = Math.max(0, Math.round(iy - r));
+  const x1 = Math.min(imgW-1, Math.round(ix + r));
+  const y1 = Math.min(imgH-1, Math.round(iy + r));
+  const rr = r*r;
+  const data = rawImageData.data;
+  for(let y=y0; y<=y1; y++){
+    const dy = y - iy;
+    for(let x=x0; x<=x1; x++){
+      const dx = x - ix;
+      if(dx*dx + dy*dy <= rr){
+        const i = (y*imgW + x) * 4;
+        data[i] = 255; data[i+1] = 255; data[i+2] = 255; data[i+3] = 255;
+      }
+    }
+  }
+}
+function eraseImageLineTo(ix,iy,size){
+  if(!imgLoaded) return;
+  if(!lastErase){ lastErase={x:ix,y:iy}; eraseImageAt(ix,iy,size); return; }
+  const steps = Math.ceil(Math.hypot(ix-lastErase.x, iy-lastErase.y) / 1);
+  for(let t=0; t<=steps; t++){
+    const x = lerp(lastErase.x, ix, t/steps);
+    const y = lerp(lastErase.y, iy, t/steps);
+    eraseImageAt(x, y, size);
+  }
+  lastErase = {x:ix, y:iy};
+}
 
 document.getElementById('download').addEventListener('click',()=>{
   if(!imgLoaded) return;
@@ -1950,11 +2002,15 @@ function initCleanupUI(){
   });
   document.getElementById('cleanupSettingsBtn')?.addEventListener('click',()=>{
     // switch to Cleanup tab if present
-    document.getElementById('tabCleanup')?.click();
+    document.querySelector('#rightTabs [data-tab="cleanup"]')?.click();
   });
-  document.getElementById('cleanupFindBtn')?.addEventListener('click',()=>{
-    findOpensAndTees();
-    redrawOverlay();
+  // Attach to all Find buttons (ID is duplicated in toolbar and tab)
+  document.querySelectorAll('#cleanupFindBtn')?.forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      try{ findOpensAndTees_v3(); }
+      catch(_){ try{ findOpensAndTees(); }catch(__){} }
+      redrawOverlay();
+    });
   });
   const en = document.getElementById('cleanupEnabled');
   const th = document.getElementById('cleanupThickness');
@@ -3786,13 +3842,8 @@ function __arrows_computePathLength(path){
     return {tees: teesC.length, opens: endsC.length};
   }
 
-  // Wire buttons
-  document.addEventListener('click', (e)=>{
-    const el = e.target;
-    if(el && el.id === 'cleanupFindBtn'){
-      try{ findOpensAndTees_v3(); }catch(_){}
-    }
-  }, true);
+  // (Removed) Global click capture for Find Opens/Tees to prevent double invocation.
+  // Dedicated handlers are attached in initCleanupUI().
 
   // Ensure markers render after overlay
   const __redraw = window.redrawOverlay;
@@ -3909,42 +3960,6 @@ function __arrows_computePathLength(path){
       return r;
     };
     window.drawNetLabels.__junctionExport2 = true;
-  }
-
-  document.addEventListener('DOMContentLoaded', hookUI);
-})();
-
-  // Patch PNG export so dots are baked in
-  const dl = document.getElementById('download');
-  if(dl && !dl.__junctionPatched){
-    dl.__junctionPatched = true;
-    dl.addEventListener('click', function(){
-      // defer: original handler runs first, but we also draw into export by patching its path
-    }, {capture:true});
-    // monkey-patch download code if available by wrapping drawNetLabels or after layers drawn
-    if(typeof window.drawNetLabels==='function' && !window.drawNetLabels.__junctionExport){
-      const __origDrawNetLabels = window.drawNetLabels;
-      window.drawNetLabels = function(ctx, transformed){
-        const r = __origDrawNetLabels.apply(this, arguments);
-        try{
-          if(window.junctionCfg?.enabled && transformed===false){
-            // ctx here is export canvas context in image coords
-            const markers = ensureTeeMarkers().filter(m=>m.type==='tee');
-            const rr = Math.max(1, +window.junctionCfg.radius || 6);
-            ctx.save();
-            for(const m of markers){
-              ctx.fillStyle = '#000000';
-              ctx.beginPath();
-              ctx.arc(m.x, m.y, rr, 0, Math.PI*2);
-              ctx.fill();
-            }
-            ctx.restore();
-          }
-        }catch(_){}
-        return r;
-      };
-      window.drawNetLabels.__junctionExport = true;
-    }
   }
 
   document.addEventListener('DOMContentLoaded', hookUI);
