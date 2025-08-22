@@ -35,9 +35,14 @@ function toggleBottomPanel(force) {
     const split = document.getElementById('splitBottom');
     const btn = document.getElementById('toggleBottom');
     const reveal = document.getElementById('revealBottom');
+    const dock = document.getElementById('dock');
+
     const isHidden = panel.classList.contains('hidden');
     const show = force === undefined ? isHidden : force;
+
     panel.classList.toggle('hidden', !show);
+    if (dock) dock.classList.toggle('bottom-panel-visible', show);
+
     if (split) split.style.display = show ? '' : 'none';
     setBtnActive(btn, show);
     if (reveal) reveal.style.display = show ? 'none' : 'flex';

@@ -49,6 +49,11 @@ header {
     flex-grow: 1;
     position: relative;
     overflow: hidden;
+    transition: padding-bottom 0.2s ease;
+}
+
+.dock.bottom-panel-visible {
+    padding-bottom: 200px; /* must match #bottomPanel height */
 }
 
 main.canvasWrap {
@@ -95,6 +100,7 @@ canvas {
 
 #rightPanel {
     border-left: 1px solid var(--border-color);
+    margin-left: auto; /* ensure the right panel stays at the far right */
 }
 
 #bottomPanel {
