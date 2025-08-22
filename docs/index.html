@@ -894,7 +894,7 @@ view.addEventListener('click',(e)=>{
   if(!imgLoaded) return; if(spaceHeld||panMode) return;
   const [ix,iy]=screenToImg(e.offsetX,e.offsetY);
   if(textMode){ openEditor(e.offsetX,e.offsetY); return; }
-  if(eraserMode) return;
+  if(eraserMode) return; // Add this check
   if(selectedAnn>=0){ const hitSel=(hitTestAnnotation(ix,iy)===selectedAnn); if(hitSel){ return; } }
   if(!highlightMode) return;
   if(segmentMode.checked) traceSegment(ix,iy,{clear:e.shiftKey}); else traceFlood(ix,iy,{clear:e.shiftKey});
@@ -979,7 +979,7 @@ function toggleHighlight(){
   if (highlightMode){
     // turn off other modes
     textMode = false; textModeBtn.classList.remove('active');
-    eraserMode = false; eraserToggle.classList.remove('active');
+    eraserMode = false; eraserToggle.classList.remove('active'); // Add this line
     lineMode = false; lineToggle?.classList?.remove('active');
     panMode = false; panToggle.classList.remove('active');
     // also turn off net/continuity if they are on
