@@ -39,7 +39,7 @@ header .toolbar button.active{outline:2px solid #3a4a7a}
 .footer{font-size:12px;color:var(--muted);text-align:center;margin-top:4px}
 .splitter{background:transparent;position:relative;z-index:3}.splitter:hover::after{background:#2a3145}.splitter::after{content:"";position:absolute;background:#1b2233;border-radius:3px;opacity:.9}
 .splitter.v{cursor:col-resize}.splitter.v.left{grid-area:splitL}.splitter.v.right{grid-area:splitR}.splitter.v::after{width:3px;top:12px;bottom:12px;left:calc(50% - 1.5px)}
-.splitter.h{grid-area:splitB;cursor:row-resize position:relative; }.splitter.h::after{height:3px;left:12px;right:12px;top:calc(50% - 1.5px)}
+.splitter.h{grid-area:splitB;\1; \2; }.splitter.h::after{height:3px;left:12px;right:12px;top:calc(50% - 1.5px)}
 #leftPanel{grid-area:left}#rightPanel{grid-area:right}#bottomPanel{grid-area:bottom}
 .canvasWrap{grid-area:main;position:relative;background:#0b0d12;border:1px solid #1f2533;border-radius:10px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.25);min-width:0;min-height:0}
 canvas{position:absolute;inset:0;max-width:100%;max-height:100%;image-rendering:crisp-edges;image-rendering:pixelated;background:#fff}
@@ -432,7 +432,7 @@ header{padding:8px 12px}
     <div>Style</div>
     <select id="selArrowStyle">
       <option value="triangle" selected>Triangle</option>
-      <option value="chevron">Chevron “»”</option>
+      <option value="chevron">Chevron "»"</option>
       <option value="dots">Dots</option>
     </select>
     <span></span>
@@ -458,7 +458,7 @@ header{padding:8px 12px}
         <button id="exportNets">Export JSON</button>
       </div>
       <div class="layerList" id="netsList"></div>
-      <div class="hint">Click a net to edit. “+ Net” switches to Net Label mode; then click a wire to create it. Use the Zoom button on a row to center on that net.</div>
+      <div class="hint">Click a net to edit. "+ Net" switches to Net Label mode; then click a wire to create it. Use the Zoom button on a row to center on that net.</div>
     </section>
     <section id="tab-cleanup" class="tabpane">
       <div class="group">
@@ -534,7 +534,7 @@ header{padding:8px 12px}
           <input type="checkbox" id="ocrAttachNet" checked> Attach OCR near wires as Net Label
         </label>
       </div>
-This pass cleans only raster text: adaptive binarize, close tiny gaps, drop speckle, and draw crisp black text over a white underlay. Use “Retype (R)” to replace text manually.</p>
+This pass cleans only raster text: adaptive binarize, close tiny gaps, drop speckle, and draw crisp black text over a white underlay. Use "Retype (R)" to replace text manually.</p>
       <h3 style="margin-top:10px;">Retype patches</h3>
       <div class="row" style="gap:8px;">
         <button id="retypeToggle2">Retype Mode</button>
@@ -761,7 +761,59 @@ function drawBase(){ const ctx=vctx; ctx.setTransform(1,0,0,1,0,0); ctx.clearRec
 
 function drawAnnotationsToCtx(ctx, transformed){ if(!showAnnotationsChk.checked||!annotations.length) return; ctx.save(); ctx.textBaseline='middle'; ctx.textAlign='left'; for(const ann of annotations){ const size=Math.max(10,+ann.size||18); ctx.font = `${size}px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif`; const x= transformed ? (ann.x - imgW/2) : ann.x; const y= transformed ? (ann.y - imgH/2) : ann.y; ctx.lineWidth=Math.max(2, Math.round(size/6)); ctx.strokeStyle='rgba(255,255,255,0.9)'; ctx.fillStyle=ann.color||'#ffff00'; ctx.strokeText(ann.text, x, y); ctx.fillText(ann.text, x, y); } ctx.restore(); }
 
-function drawTinted(ctx,img,w,h,color){ tintCanvas.width=Math.max(1,Math.round(w)); tintCanvas.height=Math.max(1,Math.round(h)); tintCtx.clearRect(0,0,tintCanvas.width,tintCanvas.height); tintCtx.drawImage(img,0,0,tintCanvas.width,tintCanvas.height); tintCtx.globalCompositeOperation='source-atop'; tintCtx.fillStyle=color||'#000'; tintCtx.fillRect(0,0,tintCanvas.width,tintCanvas.height); tintCtx.globalCompositeOperation='source-over'; ctx.drawImage(tintCanvas,-w/2,-h/2,w,h); }
+// Add performance optimization variables after the existing canvas declarations
+let tintCanvasCache = new Map(); // Cache for tinted symbol images
+let redrawTimeout = null; // For debouncing redraws
+let lastRedrawTime = 0; // Track last redraw time
+let isDragging = false; // Track if we're currently dragging
+let dragStartPos = null; // Track where drag started
+let hasMoved = false; // Track if mouse has moved during drag
+
+// Function to clear cache when needed (e.g., when symbol properties change)
+function clearTintCache() {
+  tintCanvasCache.clear();
+}
+
+// Performance monitoring function
+function logPerformance(message) {
+  if (window.performance && window.performance.now) {
+    console.log(`[Performance] ${message}: ${performance.now().toFixed(2)}ms`);
+  }
+}
+
+function drawTinted(ctx,img,w,h,color){
+  // Create a cache key based on image, size, and color
+  const cacheKey = `${img.src}_${w}_${h}_${color}`;
+  
+  // Check if we have a cached version
+  if (tintCanvasCache.has(cacheKey)) {
+    const cached = tintCanvasCache.get(cacheKey);
+    ctx.drawImage(cached, -w/2, -h/2, w, h);
+    return;
+  }
+  
+  // Create new tinted image and cache it
+  const tintCanvas = document.createElement('canvas');
+  const tintCtx = tintCanvas.getContext('2d');
+  tintCanvas.width = Math.max(1, Math.round(w));
+  tintCanvas.height = Math.max(1, Math.round(h));
+  
+  tintCtx.clearRect(0, 0, tintCanvas.width, tintCanvas.height);
+  tintCtx.drawImage(img, 0, 0, tintCanvas.width, tintCanvas.height);
+  tintCtx.globalCompositeOperation = 'source-atop';
+  tintCtx.fillStyle = color || '#000';
+  tintCtx.fillRect(0, 0, tintCanvas.width, tintCanvas.height);
+  tintCtx.globalCompositeOperation = 'source-over';
+  
+  // Cache the result (limit cache size to prevent memory issues)
+  if (tintCanvasCache.size > 50) {
+    const firstKey = tintCanvasCache.keys().next().value;
+    tintCanvasCache.delete(firstKey);
+  }
+  tintCanvasCache.set(cacheKey, tintCanvas);
+  
+  ctx.drawImage(tintCanvas, -w/2, -h/2, w, h);
+}
 
 function drawSymbols(ctx){
   for(let i=0;i<symbols.length;i++){
@@ -782,17 +834,91 @@ function drawSelectionOutline(ctx){
   ctx.strokeStyle='#6bb2ff'; ctx.setLineDash([6,4]); ctx.lineWidth=2/viewScale; ctx.strokeRect(-w/2,-h/2,w,h); ctx.restore();
 }
 
+// Optimized redrawOverlay with debouncing
 function redrawOverlay(){
-  function drawSegments(ctx){ for(let i=0;i<segments.length;i++){ const s=segments[i]; const L=layers[s.layer]||layers[0]; if(!L||!L.visible) continue; ctx.save(); ctx.globalAlpha=Math.max(0,Math.min(1,L.opacity)); ctx.strokeStyle=L.color||'#f00'; ctx.lineWidth=Math.max(1,s.thick||(+thickness.value|0))/viewScale; ctx.setLineDash([]); ctx.beginPath(); ctx.moveTo(s.x1 - imgW/2, s.y1 - imgH/2); ctx.lineTo(s.x2 - imgW/2, s.y2 - imgH/2); ctx.stroke(); ctx.restore(); } }
-  const ctx=octx; ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,overlay.width,overlay.height); if(!imgLoaded) return; ctx.save(); applyViewTransform(ctx); ctx.imageSmoothingEnabled=false;
-  for(const L of layers){ if(!L.visible) continue; const a=Math.round(clamp(L.opacity,0,1)*255); let R=255,G=0,B=0; try{ R=parseInt(L.color.slice(1,3),16); G=parseInt(L.color.slice(3,5),16); B=parseInt(L.color.slice(5,7),16);}catch(_){}
-    const data=maskImageData.data, mask=L.mask; for(let i=0,j=0;i<mask.length;i++,j+=4){ if(mask[i]){ data[j]=R; data[j+1]=G; data[j+2]=B; data[j+3]=a; } else { data[j]=data[j+1]=data[j+2]=data[j+3]=0; } } 
-    maskCtx.putImageData(maskImageData,0,0); ctx.drawImage(maskCanvas,-imgW/2,-imgH/2);
+  // Don't debounce during dragging operations - they need immediate response
+  if (isDragging) {
+    // Clear any pending debounced redraws during dragging
+    if (redrawTimeout) {
+      clearTimeout(redrawTimeout);
+      redrawTimeout = null;
+    }
+  } else {
+    // Debounce rapid redraws only when not dragging
+    const now = performance.now();
+    if (now - lastRedrawTime < 16) { // ~60fps limit
+      if (redrawTimeout) clearTimeout(redrawTimeout);
+      redrawTimeout = setTimeout(redrawOverlay, 16);
+      return;
+    }
   }
+  lastRedrawTime = performance.now();
+  
+  function drawSegments(ctx){ 
+    for(let i=0;i<segments.length;i++){ 
+      const s=segments[i]; 
+      const L=layers[s.layer]||layers[0]; 
+      if(!L||!L.visible) continue; 
+      ctx.save(); 
+      ctx.globalAlpha=Math.max(0,Math.min(1,L.opacity)); 
+      ctx.strokeStyle=L.color||'#f00'; 
+      ctx.lineWidth=Math.max(1,s.thick||(+thickness.value|0))/viewScale; 
+      ctx.setLineDash([]); 
+      ctx.beginPath(); 
+      ctx.moveTo(s.x1 - imgW/2, s.y1 - imgH/2); 
+      ctx.lineTo(s.x2 - imgW/2, s.y2 - imgH/2); 
+      ctx.stroke(); 
+      ctx.restore(); 
+    } 
+  }
+  
+  const ctx=octx; 
+  ctx.setTransform(1,0,0,1,0,0); 
+  ctx.clearRect(0,0,overlay.width,overlay.height); 
+  if(!imgLoaded) return; 
+  ctx.save(); 
+  applyViewTransform(ctx); 
+  ctx.imageSmoothingEnabled=false;
+  
+  // Optimize layer rendering - only process visible layers
+  for(const L of layers){ 
+    if(!L.visible) continue; 
+    const a=Math.round(clamp(L.opacity,0,1)*255); 
+    let R=255,G=0,B=0; 
+    try{ 
+      R=parseInt(L.color.slice(1,3),16); 
+      G=parseInt(L.color.slice(3,5),16); 
+      B=parseInt(L.color.slice(5,7),16);
+    }catch(_){}
+    
+    const data=maskImageData.data, mask=L.mask; 
+    for(let i=0,j=0;i<mask.length;i++,j+=4){ 
+      if(mask[i]){ 
+        data[j]=R; data[j+1]=G; data[j+2]=B; data[j+3]=a; 
+      } else { 
+        data[j]=data[j+1]=data[j+2]=data[j+3]=0; 
+      } 
+    } 
+    maskCtx.putImageData(maskImageData,0,0); 
+    ctx.drawImage(maskCanvas,-imgW/2,-imgH/2);
+  }
+  
   drawSegments(ctx);
   drawSymbols(ctx);
   drawSelectionOutline(ctx);
-  if(linePreview){ ctx.save(); ctx.strokeStyle='#6bb2ff'; ctx.setLineDash([8,6]); ctx.lineWidth=Math.max(1,(thickness.value|0))/viewScale; ctx.beginPath(); ctx.moveTo(linePreview.x1 - imgW/2, linePreview.y1 - imgH/2); ctx.lineTo(linePreview.x2 - imgW/2, linePreview.y2 - imgH/2); ctx.stroke(); ctx.restore(); }
+  
+  if(linePreview){ 
+    ctx.save(); 
+    ctx.strokeStyle='#6bb2ff'; 
+    ctx.setLineDash([8,6]); 
+    ctx.lineWidth=Math.max(1,(thickness.value|0))/viewScale; 
+    ctx.beginPath(); 
+    ctx.moveTo(linePreview.x1 - imgW/2, linePreview.y1 - imgH/2); 
+    ctx.lineTo(linePreview.x2 - imgW/2, linePreview.y2 - imgH/2); 
+    ctx.stroke(); 
+    ctx.restore(); 
+  }
+  
   drawAnnotationsToCtx(ctx,true);
   drawNetLabels(ctx,true);
   ctx.restore();
@@ -845,29 +971,99 @@ view.addEventListener('auxclick', e=>{ if(e.button===1) e.preventDefault(); });
 view.addEventListener('mousedown',(e)=>{
   if(!imgLoaded) return;
   mouseDown=true;
+  hasMoved = false;
+  dragStartPos = {x: e.clientX, y: e.clientY};
+  
   if(e.button===1) e.preventDefault();
   if(spaceHeld||panMode||e.button===1){ hideEditor(); panning=true; lastMouse={x:e.clientX,y:e.clientY}; return; }
   const [ix,iy]=screenToImg(e.offsetX,e.offsetY);
   if(eraserMode){ eraseAt(ix,iy,+eraserSize.value); redrawOverlay(); return; }
   if(lineMode){ const [sx,sy]=snapPosition(ix,iy); lineStart={x:sx,y:sy}; lineEnd={x:sx,y:sy}; linePreview={x1:sx,y1:sy,x2:sx,y2:sy}; redrawOverlay(); return; }
+  
   let hit = hitTestSymbol(ix,iy);
-  if(hit>=0){ selectedSym=hit; selectedSeg=-1; selectedAnn=-1; draggingSym=true; suppressNextClick=true; syncSymbolUI(); redrawOverlay(); return; }
+  if(hit>=0){ 
+    selectedSym=hit; 
+    selectedSeg=-1; 
+    selectedAnn=-1; 
+    draggingSym=true; 
+    suppressNextClick=true; 
+    syncSymbolUI(); 
+    redrawOverlay(); 
+    return; 
+  }
+  
   hit = hitTestAnnotation(ix,iy);
-  if(hit>=0){ selectedAnn=hit; selectedSym=-1; selectedSeg=-1; draggingAnn=true; annOffset.dx=ix-annotations[hit].x; annOffset.dy=iy-annotations[hit].y; suppressNextClick=true; redrawOverlay(); return; }
+  if(hit>=0){ 
+    selectedAnn=hit; 
+    selectedSym=-1; 
+    selectedSeg=-1; 
+    draggingAnn=true; 
+    annOffset.dx=ix-annotations[hit].x; 
+    annOffset.dy=iy-annotations[hit].y; 
+    suppressNextClick=true; 
+    redrawOverlay(); 
+    return; 
+  }
+  
   hit = hitTestSegment(ix,iy);
-  if(hit>=0){ selectedSeg=hit; selectedSym=-1; selectedAnn=-1; draggingSeg=true; lastWorld={x:ix,y:iy}; suppressNextClick=true; redrawOverlay(); return; }
+  if(hit>=0){ 
+    selectedSeg=hit; 
+    selectedSym=-1; 
+    selectedAnn=-1; 
+    draggingSeg=true; 
+    lastWorld={x:ix,y:iy}; 
+    suppressNextClick=true; 
+    redrawOverlay(); 
+    return; 
+  }
 });
 window.addEventListener('mousemove',(e)=>{
   if(panning){ const dx=e.clientX-lastMouse.x, dy=e.clientY-lastMouse.y; lastMouse={x:e.clientX,y:e.clientY}; panX+=dx; panY+=dy; drawBase(); redrawOverlay(); }
   if(!imgLoaded||!mouseDown) return;
-  const rect=view.getBoundingClientRect(); const [ix,iy]=screenToImg(e.clientX-rect.left, e.clientY-rect.top);
+  
+  // Check if we've moved enough to consider it a drag
+  if (dragStartPos && !hasMoved) {
+    const dx = e.clientX - dragStartPos.x;
+    const dy = e.clientY - dragStartPos.y;
+    const distance = Math.sqrt(dx*dx + dy*dy);
+    if (distance > 3) { // 3 pixel threshold for drag detection
+      hasMoved = true;
+      isDragging = true;
+    }
+  }
+  
+  const rect=view.getBoundingClientRect(); 
+  const [ix,iy]=screenToImg(e.clientX-rect.left, e.clientY-rect.top);
+  
   if(eraserMode){ eraseLineTo(ix,iy,+eraserSize.value); redrawOverlay(); }
   else if(lineMode&&lineStart){ const [sx,sy]=snapPosition(ix,iy); lineEnd={x:sx,y:sy}; linePreview={x1:lineStart.x,y1:lineStart.y,x2:sx,y2:sy}; redrawOverlay(); }
-  else if(draggingSym&&selectedSym>=0){ const s=symbols[selectedSym]; const [sx,sy]=snapPosition(ix,iy); s.x=sx; s.y=sy; if(symLockLayer.checked) s.layer=activeLayer; redrawOverlay(); }
-  else if(draggingAnn&&selectedAnn>=0){ const a=annotations[selectedAnn]; let nx=ix-annOffset.dx, ny=iy-annOffset.dy; [nx,ny]=snapPosition(nx,ny); a.x=nx; a.y=ny; redrawOverlay(); }
+  else if(draggingSym&&selectedSym>=0){ 
+    const s=symbols[selectedSym]; 
+    const [sx,sy]=snapPosition(ix,iy); 
+    s.x=sx; 
+    s.y=sy; 
+    if(symLockLayer.checked) s.layer=activeLayer; 
+    redrawOverlay(); 
+  }
+  else if(draggingAnn&&selectedAnn>=0){ 
+    const a=annotations[selectedAnn]; 
+    let nx=ix-annOffset.dx, ny=iy-annOffset.dy; 
+    [nx,ny]=snapPosition(nx,ny); 
+    a.x=nx; a.y=ny; 
+    redrawOverlay(); 
+  }
 });
 window.addEventListener('mouseup',()=>{
-  panning=false; mouseDown=false; lastErase=null; draggingSym=false; draggingSeg=false; draggingAnn=false;
+  panning=false; 
+  mouseDown=false; 
+  lastErase=null; 
+  draggingSym=false; 
+  draggingSeg=false; 
+  draggingAnn=false; 
+  isDragging=false;
+  dragStartPos = null;
+  hasMoved = false;
+  
   if(lineMode && lineStart && lineEnd){
     if(segmentMode.checked){ const mask=layers[activeLayer].mask; drawSmartNetLine(mask, lineStart.x|0, lineStart.y|0, lineEnd.x|0, lineEnd.y|0); }
     else { segments.push({x1:lineStart.x|0,y1:lineStart.y|0,x2:lineEnd.x|0,y2:lineEnd.y|0,thick:+thickness.value,layer:activeLayer}); selectedSeg=segments.length-1; }
@@ -876,13 +1072,63 @@ window.addEventListener('mouseup',()=>{
 });
 
 view.addEventListener('click',(e)=>{
-  if(suppressNextClick){ suppressNextClick=false; return; }
+  if(suppressNextClick){ 
+    suppressNextClick=false; 
+    // If we didn't actually drag, ensure the symbol is properly selected
+    if (!hasMoved && selectedSym >= 0) {
+      syncSymbolUI();
+      redrawOverlay();
+    }
+    return; 
+  }
+  
   if(e.ctrlKey){
     const [cx,cy]=screenToImg(e.offsetX,e.offsetY);
-    if(hitTestSymbol(cx,cy)<0 && hitTestAnnotation(cx,cy)<0 && hitTestSegment(cx,cy)<0){ selectedSym=-1; selectedAnn=-1; selectedSeg=-1; redrawOverlay(); return; }
+    if(hitTestSymbol(cx,cy)<0 && hitTestAnnotation(cx,cy)<0 && hitTestSegment(cx,cy)<0){ 
+      selectedSym=-1; 
+      selectedAnn=-1; 
+      selectedSeg=-1; 
+      redrawOverlay(); 
+      return; 
+    }
   }
-  if(!imgLoaded) return; if(spaceHeld||panMode) return;
+  
+  if(!imgLoaded) return; 
+  if(spaceHeld||panMode) return;
+  
   const [ix,iy]=screenToImg(e.offsetX,e.offsetY);
+  
+  // Handle symbol selection on click
+  let hit = hitTestSymbol(ix,iy);
+  if(hit>=0){ 
+    selectedSym=hit; 
+    selectedSeg=-1; 
+    selectedAnn=-1; 
+    syncSymbolUI(); 
+    redrawOverlay(); 
+    return; 
+  }
+  
+  // Handle annotation selection on click
+  hit = hitTestAnnotation(ix,iy);
+  if(hit>=0){ 
+    selectedAnn=hit; 
+    selectedSym=-1; 
+    selectedSeg=-1; 
+    redrawOverlay(); 
+    return; 
+  }
+  
+  // Handle segment selection on click
+  hit = hitTestSegment(ix,iy);
+  if(hit>=0){ 
+    selectedSeg=hit; 
+    selectedSym=-1; 
+    selectedAnn=-1; 
+    redrawOverlay(); 
+    return; 
+  }
+  
   if(textMode){ openEditor(e.offsetX,e.offsetY); return; }
   if(eraserMode) return;
   if(selectedAnn>=0){ const hitSel=(hitTestAnnotation(ix,iy)===selectedAnn); if(hitSel){ return; } }
@@ -891,13 +1137,42 @@ view.addEventListener('click',(e)=>{
 });
 
 view.addEventListener('dragover',(e)=>{ e.preventDefault(); e.dataTransfer.dropEffect='copy'; });
+
+// Optimize the drop event handler
 view.addEventListener('drop',(e)=>{
+  const startTime = performance.now();
   e.preventDefault();
-  const key=e.dataTransfer.getData('text/plain'); if(!key) return;
-  const rect=view.getBoundingClientRect(); let [ix,iy]=screenToImg(e.clientX-rect.left, e.clientY-rect.top); [ix,iy]=snapPosition(ix,iy);
-  if(key==='text'){ const ann={x:ix,y:iy,text:'Text',size:+labelSize.value,color:labelColor.value}; annotations.push(ann); selectedAnn=annotations.length-1; selectedSym=-1; selectedSeg=-1; openEditor(e.clientX-rect.left,e.clientY-rect.top,selectedAnn); logHistory('Dropped text annotation'); redrawOverlay(); return; }
+  const key=e.dataTransfer.getData('text/plain'); 
+  if(!key) return;
+  
+  const rect=view.getBoundingClientRect(); 
+  let [ix,iy]=screenToImg(e.clientX-rect.left, e.clientY-rect.top); 
+  [ix,iy]=snapPosition(ix,iy);
+  
+  if(key==='text'){ 
+    const ann={x:ix,y:iy,text:'Text',size:+labelSize.value,color:labelColor.value}; 
+    annotations.push(ann); 
+    selectedAnn=annotations.length-1; 
+    selectedSym=-1; 
+    selectedSeg=-1; 
+    openEditor(e.clientX-rect.left,e.clientY-rect.top,selectedAnn); 
+    logHistory('Dropped text annotation'); 
+    redrawOverlay(); 
+    logPerformance(`Text drop completed in ${performance.now() - startTime}`);
+    return; 
+  }
+  
   const s={type:key,x:ix,y:iy,size:+symSize.value,rot:0,layer:activeLayer,color:symColor.value,label:symLabelInput.value.trim(),labelSize:+symLabelSize.value,labelColor:symLabelColor.value,labelDx:0,labelDy:0};
-  symbols.push(s); selectedSym=symbols.length-1; syncSymbolUI(); logHistory('Dropped symbol: '+key); redrawOverlay();
+  symbols.push(s); 
+  selectedSym=symbols.length-1; 
+  
+  // Batch UI updates to reduce DOM operations
+  requestAnimationFrame(() => {
+    syncSymbolUI(); 
+    logHistory('Dropped symbol: '+key); 
+    redrawOverlay();
+    logPerformance(`Symbol drop completed in ${performance.now() - startTime}`);
+  });
 });
 
 function toggleTextMode(){ textMode=!textMode; textModeBtn.classList.toggle('active',textMode); if(textMode){ panMode=false; eraserMode=false; eraserToggle.classList.remove('active'); lineMode=false; lineToggle?.classList?.remove('active'); highlightMode=false; highlightToggle?.classList?.remove('active'); } }
@@ -1067,12 +1342,25 @@ function syncSymbolUI(){
   symLabelColor.value=s.labelColor||'#000000';
 }
 
-symSize.addEventListener('input',()=>{ symSizeVal.textContent=symSize.value; if(selectedSym>=0){ symbols[selectedSym].size=+symSize.value; redrawOverlay(); }});
+symSize.addEventListener('input',()=>{ 
+  symSizeVal.textContent=symSize.value; 
+  if(selectedSym>=0){ 
+    symbols[selectedSym].size=+symSize.value; 
+    clearTintCache(); // Clear cache when size changes
+    redrawOverlay(); 
+  }
+});
 rotL.addEventListener('click',()=>{ if(selectedSym<0) return; symbols[selectedSym].rot=(symbols[selectedSym].rot-45)%360; redrawOverlay(); });
 rotR.addEventListener('click',()=>{ if(selectedSym<0) return; symbols[selectedSym].rot=(symbols[selectedSym].rot+45)%360; redrawOverlay(); });
 delSym.addEventListener('click',()=>{ if(selectedSym<0) return; symbols.splice(selectedSym,1); selectedSym=-1; redrawOverlay(); });
 
-symColor.addEventListener('input',()=>{ if(selectedSym>=0){ symbols[selectedSym].color=symColor.value; redrawOverlay(); }});
+symColor.addEventListener('input',()=>{ 
+  if(selectedSym>=0){ 
+    symbols[selectedSym].color=symColor.value; 
+    clearTintCache(); // Clear cache when color changes
+    redrawOverlay(); 
+  }
+});
 symLabelInput.addEventListener('input',()=>{ if(selectedSym>=0){ symbols[selectedSym].label=symLabelInput.value; redrawOverlay(); }});
 symLabelSize.addEventListener('input',()=>{ symLabelSizeVal.textContent=symLabelSize.value; if(selectedSym>=0){ symbols[selectedSym].labelSize=+symLabelSize.value; redrawOverlay(); }});
 symLabelColor.addEventListener('input',()=>{ if(selectedSym>=0){ symbols[selectedSym].labelColor=symLabelColor.value; redrawOverlay(); }});
@@ -1666,7 +1954,7 @@ topEraser?.addEventListener('click', ()=>{ eraserToggle?.click(); syncToolButton
 topLine?.addEventListener('click', ()=>{ lineToggle?.click(); syncToolButtons(); });
 topNet?.addEventListener('click', ()=>{ netLabelBtn?.click(); syncToolButtons(); });
 topCont?.addEventListener('click', ()=>{ contToggleBtn?.click(); syncToolButtons(); });
-eraserToggle?.addEventListener('click', toggleEraser);
+
 
 // --- Manual Arrows click handler ---
 
@@ -1950,7 +2238,7 @@ function initCleanupUI(){
   });
   document.getElementById('cleanupSettingsBtn')?.addEventListener('click',()=>{
     // switch to Cleanup tab if present
-    document.getElementById('tabCleanup')?.click();
+    document.querySelector('#rightTabs button[data-tab="cleanup"]')?.click();
   });
   document.getElementById('cleanupFindBtn')?.addEventListener('click',()=>{
     findOpensAndTees();
@@ -4115,6 +4403,1330 @@ function __arrows_computePathLength(path){
   window.addEventListener('beforeunload', ()=>{ try{ ocrWorker && ocrWorker.terminate && ocrWorker.terminate(); }catch(_){} });
 })();
 </script>
+<script>
+// ===== Unified deletion for symbols and text annotations =====
+(function(){
+  // Avoid double-defining
+  if (window.__unifiedDeletePatched) return;
+  window.__unifiedDeletePatched = true;
+
+  // Try to locate shared state
+  const hasAnn = typeof annotations !== 'undefined' && Array.isArray(annotations);
+  // Some builds use App.* namespaces; be defensive
+  const AppRef = (window.App || {});
+  const redraw = (window.redrawOverlay || AppRef.canvas?.redrawOverlay || window.redrawAll || function(){});
+  const log = (window.logHistory || function(){});
+
+  function deleteSelectedSymbolOrText(){
+    let did = false;
+
+    // 1) Symbols: common build uses selectedSym or selectedSymbolIndex
+    try {
+      if (typeof selectedSym !== 'undefined' && selectedSym) {
+        // Remove selected symbol from its layer cache/list
+        if (Array.isArray(symbols)) {
+          const idx = symbols.indexOf(selectedSym);
+          if (idx >= 0) { symbols.splice(idx,1); did = true; }
+        } else if (Array.isArray(activeLayer?.items)) {
+          const i2 = activeLayer.items.indexOf(selectedSym);
+          if (i2 >= 0) { activeLayer.items.splice(i2,1); did = true; }
+        }
+        selectedSym = null;
+      }
+    } catch(e){}
+
+    // 2) Text annotations: support selectedAnnotation / selectedText / activeAnnotationId
+    try {
+      // Strategy A: selectedAnnotation object reference
+      if (typeof selectedAnnotation !== 'undefined' && selectedAnnotation && hasAnn) {
+        const idx = annotations.indexOf(selectedAnnotation);
+        if (idx >= 0) { annotations.splice(idx,1); did = true; }
+        selectedAnnotation = null;
+      }
+      // Strategy B: index tracking
+      if (!did && typeof selectedAnnotationIndex !== 'undefined' && selectedAnnotationIndex >= 0 && hasAnn) {
+        annotations.splice(selectedAnnotationIndex,1);
+        selectedAnnotationIndex = -1;
+        did = true;
+      }
+      // Strategy C: id-based
+      if (!did && typeof activeAnnotationId !== 'undefined' && hasAnn) {
+        const pos = annotations.findIndex(a => a && (a.id === activeAnnotationId));
+        if (pos >= 0) { annotations.splice(pos,1); did = true; }
+        activeAnnotationId = null;
+      }
+      // Strategy D: flag on objects
+      if (!did && hasAnn) {
+        const pos2 = annotations.findIndex(a => a && (a.selected || a.isSelected));
+        if (pos2 >= 0) { annotations.splice(pos2,1); did = true; }
+      }
+    } catch(e){}
+
+    if (did) {
+      try { redraw(); } catch(_) {}
+      try { log('Deleted selection'); } catch(_) {}
+    }
+    return did;
+  }
+
+  // Hook into existing Delete/Backspace if present; else add one.
+  let bound = false;
+  window.addEventListener('keydown', function(ev){
+    const key = ev.key || '';
+    if (key === 'Delete' || key === 'Backspace' || ev.keyCode === 46 || ev.keyCode === 8) {
+      // Prevent erasing text in inputs when we intend to delete a selection
+      if (document.activeElement && /^(input|textarea)$/i.test(document.activeElement.tagName)) return;
+      if (deleteSelectedSymbolOrText()) {
+        ev.preventDefault();
+        ev.stopPropagation();
+      }
+    }
+  }, true);
+})();
+
+</script>
+
+<script>
+// ===== Text annotation selection + dashed highlight (non-UI intrusive) =====
+(function(){
+  if (window.__textSelectPatched) return;
+  window.__textSelectPatched = true;
+
+  // Shared state fallbacks
+  const AppRef = (window.App || {});
+  const overlayCanvas = window.overlayCanvas || AppRef.canvas?.overlayCanvas || document.getElementById('overlayCanvas');
+  const overlayCtx = overlayCanvas ? (overlayCanvas.getContext && overlayCanvas.getContext('2d')) : null;
+  const redraw = (window.redrawOverlay || AppRef.canvas?.redrawOverlay || window.redrawAll || function(){});
+  const annList = (typeof annotations !== 'undefined' && Array.isArray(annotations)) ? annotations : null;
+
+  // Track current selection explicitly
+  if (typeof window.selectedAnnotation === 'undefined') window.selectedAnnotation = null;
+  if (typeof window.selectedAnnotationIndex === 'undefined') window.selectedAnnotationIndex = -1;
+
+  function withCtxFont(a, ctx){
+    try {
+      const font = a.font || a.style || (a.size ? `${a.size}px sans-serif` : '14px sans-serif');
+      ctx.save();
+      ctx.font = font;
+      return function(){ try{ ctx.restore(); }catch(_){} };
+    } catch(_) {
+      return function(){};
+    }
+  }
+
+  function getAnnotationBounds(a, ctx){
+    // Try provided width/height; else measure text
+    let x = a.x || a.cx || 0;
+    let y = a.y || a.cy || 0;
+    let w = a.w || a.width || 0;
+    let h = a.h || a.height || 0;
+
+    if ((!w || !h) && ctx && (a.text || a.label)) {
+      const restore = withCtxFont(a, ctx);
+      const txt = (a.text || a.label)+'';
+      try {
+        const m = ctx.measureText(txt);
+        w = Math.max(w || 0, Math.ceil(m.width));
+        // Approx text height: use emSquare approximations
+        const lineH = (a.size ? a.size : ((m.fontBoundingBoxAscent||0)+(m.fontBoundingBoxDescent||0))) || 16;
+        h = Math.max(h || 0, Math.ceil(lineH * (a.lines ? a.lines : 1)));
+      } catch(_) {}
+      restore();
+    }
+
+    // Add small padding for selection
+    const pad = 4;
+    return { x: x - pad, y: y - (h||16) - pad, w: (w||40) + 2*pad, h: (h||16) + 2*pad };
+  }
+
+  function hitTestAnnotation(px, py){
+    if (!annList || !overlayCtx) return {idx:-1, ann:null};
+    // Iterate topmost-first: check from end
+    for (let i = annList.length - 1; i >= 0; i--){
+      const a = annList[i];
+      if (!a) continue;
+      const b = getAnnotationBounds(a, overlayCtx);
+      if (px >= b.x && px <= b.x + b.w && py >= b.y && py <= b.y + b.h){
+        return {idx: i, ann: a};
+      }
+    }
+    return {idx:-1, ann:null};
+  }
+
+  function drawAnnotationSelection(ctx, a){
+    if (!a || !ctx) return;
+    const b = getAnnotationBounds(a, ctx);
+    ctx.save();
+    ctx.setLineDash([6,4]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#6bb2ff'; // matches accent, only for selection box
+    ctx.strokeRect(b.x, b.y, b.w, b.h);
+    ctx.restore();
+  }
+
+  // Hook selection into overlay redraw: draw dashed box if selected
+  const _redrawOverlay = window.redrawOverlay || AppRef.canvas?.redrawOverlay;
+  if (!_redrawOverlay) {
+    // fallback: wrap a periodic draw on requestAnimationFrame if no explicit redraw present
+    // (do nothing if not available; selection box will be drawn on next overlay repaint)
+  } else {
+    const wrapped = function(){
+      try{ _redrawOverlay.apply(this, arguments); }catch(_){}
+      try{
+        if (overlayCtx && window.selectedAnnotation) {
+          drawAnnotationSelection(overlayCtx, window.selectedAnnotation);
+        } else if (overlayCtx && typeof window.selectedAnnotationIndex === 'number' && annList && annList[window.selectedAnnotationIndex]) {
+          drawAnnotationSelection(overlayCtx, annList[window.selectedAnnotationIndex]);
+        }
+      }catch(_){}
+    };
+    // replace global reference if possible
+    try { window.redrawOverlay = wrapped; } catch(_){}
+    if (AppRef.canvas) { try { AppRef.canvas.redrawOverlay = wrapped; } catch(_){ } }
+  }
+
+  // Click-to-select on overlay
+  if (overlayCanvas) {
+    overlayCanvas.addEventListener('mousedown', function(ev){
+      // Map to canvas coords
+      const rect = overlayCanvas.getBoundingClientRect();
+      const x = (ev.clientX - rect.left);
+      const y = (ev.clientY - rect.top);
+      const hit = hitTestAnnotation(x, y);
+      if (hit.ann){
+        window.selectedAnnotation = hit.ann;
+        window.selectedAnnotationIndex = hit.idx;
+        // De-select symbol, if a separate selection exists
+        try { window.selectedSym = null; } catch(_){}
+        try { redraw(); } catch(_){}
+      }
+    }, true);
+  }
+
+  // Ensure delete handler exists (works with previous unified deletion patch)
+  if (!window.__unifiedDeletePatched){
+    window.__unifiedDeletePatched = true;
+    window.addEventListener('keydown', function(ev){
+      const key = ev.key || '';
+      if (key === 'Delete' || key === 'Backspace' || ev.keyCode === 46 || ev.keyCode === 8) {
+        if (document.activeElement && /^(input|textarea)$/i.test(document.activeElement.tagName)) return;
+        let did = false;
+        // Delete selected text
+        if (!did && annList) {
+          if (typeof window.selectedAnnotationIndex === 'number' && window.selectedAnnotationIndex >= 0) {
+            annList.splice(window.selectedAnnotationIndex, 1); did = true;
+            window.selectedAnnotationIndex = -1; window.selectedAnnotation = null;
+          } else if (window.selectedAnnotation) {
+            const i = annList.indexOf(window.selectedAnnotation);
+            if (i >= 0) { annList.splice(i,1); did = true; }
+            window.selectedAnnotation = null;
+          }
+        }
+        // Delete selected symbol (best-effort)
+        if (!did && typeof window.selectedSym !== 'undefined' && window.selectedSym){
+          if (Array.isArray(window.symbols)){
+            const i = window.symbols.indexOf(window.selectedSym);
+            if (i >= 0) { window.symbols.splice(i,1); did = True; }
+          }
+          window.selectedSym = null;
+        }
+        if (did){
+          try { redraw(); } catch(_){}
+          ev.preventDefault();
+          ev.stopPropagation();
+        }
+      }
+    }, true);
+  }
+})();
+</script>
+
+
+<script>
+// *__ann_select_wrap__* selection highlight for text annotations using selectedAnn
+(function(){
+  if (window.__annWrapApplied) return;
+  window.__annWrapApplied = true;
+  const overlay = document.getElementById('overlay');
+  const ctx = overlay ? overlay.getContext('2d') : null;
+
+  function getAnnBounds(a){
+    // a: {x,y,w,h,text,size,font}
+    const pad = 4;
+    let x = a.x ?? a.cx ?? 0;
+    let y = a.y ?? a.cy ?? 0;
+    let w = a.w ?? a.width ?? 0;
+    let h = a.h ?? a.height ?? 0;
+    if ((!w || !h) && ctx) {
+      try{
+        const font = a.font || (a.size ? (a.size + 'px sans-serif') : '16px sans-serif');
+        ctx.save(); ctx.font = font;
+        const m = ctx.measureText((a.text||a.label)||'');
+        w = Math.max(w||0, Math.ceil(m.width));
+        const lh = a.size ? a.size : 16;
+        h = Math.max(h||0, lh);
+        ctx.restore();
+      }catch(_){}
+    }
+    // y likely refers to text baseline; shift box up by h
+    return { x: x - pad, y: y - h - pad, w: (w||40) + 2*pad, h: (h||16) + 2*pad };
+  }
+
+  function drawAnnSelection(){
+    if (!ctx || typeof selectedAnn === 'undefined' || !Array.isArray(annotations)) return;
+    const idx = selectedAnn|0;
+    if (idx < 0 || idx >= annotations.length) return;
+    const a = annotations[idx]; if (!a) return;
+    const b = getAnnBounds(a);
+    ctx.save();
+    ctx.setLineDash([6,4]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#6bb2ff';
+    ctx.strokeRect(b.x, b.y, b.w, b.h);
+    ctx.restore();
+  }
+
+  const original = window.redrawOverlay;
+  if (typeof original === 'function'){
+    window.redrawOverlay = function(){
+      try{ return original.apply(this, arguments); } finally {
+        try{ drawAnnSelection(); }catch(_){}
+      }
+    };
+  } else {
+    // If no hook, draw after a tick on next frame
+    window.addEventListener('framePaint', function(){ try{ drawAnnSelection(); }catch(_){} });
+  }
+})();
+</script>
+
+
+<script>
+// *__ann_hit_test__* click-to-select text annotations (uses selectedAnn)
+(function(){
+  if (window.__annHitPatched) return;
+  window.__annHitPatched = true;
+  const overlay = document.getElementById('overlay');
+  if (!overlay) return;
+  const ctx = overlay.getContext('2d');
+
+  function annBounds(a){
+    const pad = 4;
+    let x = a.x ?? a.cx ?? 0;
+    let y = a.y ?? a.cy ?? 0;
+    let w = a.w ?? a.width ?? 0;
+    let h = a.h ?? a.height ?? 0;
+    if ((!w || !h) && ctx){
+      try{
+        const font = a.font || (a.size ? (a.size + 'px sans-serif') : '16px sans-serif');
+        ctx.save(); ctx.font = font;
+        const m = ctx.measureText((a.text||a.label)||'');
+        w = Math.max(w||0, Math.ceil(m.width));
+        const lh = a.size ? a.size : 16;
+        h = Math.max(h||0, lh);
+        ctx.restore();
+      }catch(_){}
+    }
+    return { x: x - pad, y: y - h - pad, w: (w||40) + 2*pad, h: (h||16) + 2*pad };
+  }
+
+  function hitAt(px, py){
+    if (!Array.isArray(annotations)) return -1;
+    for (let i = annotations.length-1; i>=0; i--){
+      const a = annotations[i];
+      if (!a) continue;
+      const b = annBounds(a);
+      if (px>=b.x && px<=b.x+b.w && py>=b.y && py<=b.y+b.h) return i;
+    }
+    return -1;
+  }
+
+  overlay.addEventListener('mousedown', function(ev){
+    const r = overlay.getBoundingClientRect();
+    const x = ev.clientX - r.left;
+    const y = ev.clientY - r.top;
+    const i = hitAt(x,y);
+    if (i >= 0){
+      window.selectedAnn = i;
+      try{ window.selectedSym = -1; }catch(_){}
+      try{ redrawOverlay(); }catch(_){}
+    }
+  }, true);
+})();
+</script>
+
+
+<script>
+// *__ann_delete__* delete selected text annotation with Delete/Backspace
+(function(){
+  if (window.__annDeletePatched) return;
+  window.__annDeletePatched = true;
+  window.addEventListener('keydown', function(ev){
+    const key = ev.key || '';
+    if (key !== 'Delete' && key !== 'Backspace' && ev.keyCode !== 46 && ev.keyCode !== 8) return;
+    // don't interfere with typing in inputs
+    const el = document.activeElement;
+    if (el && /^(input|textarea)$/i.test(el.tagName)) return;
+
+    if (typeof selectedAnn !== 'undefined' && Array.isArray(annotations) && selectedAnn >= 0 && selectedAnn < annotations.length){
+      annotations.splice(selectedAnn, 1);
+      selectedAnn = -1;
+      try{ redrawOverlay(); }catch(_){}
+      ev.preventDefault(); ev.stopPropagation();
+    }
+  }, true);
+})();
+</script>
+
+
+<script>
+// *__ann_debug_v2__* robust debug + selection box for text annotations
+(function(){
+  if (window.__annDebugV2) return;
+  window.__annDebugV2 = true;
+
+  // Debug logging helper -> bottom history if available
+  function dbg(msg){
+    try {
+      (window.logHistory || window.__log || console.log).call(null, "[ann] " + msg);
+    } catch(_){
+      try { console.log("[ann] " + msg); } catch(__){}
+    }
+  }
+
+  const overlay = document.getElementById('overlay');
+  const ctx = overlay ? overlay.getContext('2d') : null;
+  const hasAnn = Array.isArray(window.annotations);
+  const hasSelIdx = typeof window.selectedAnn !== 'undefined';
+
+  if (!overlay || !ctx) { dbg("overlay canvas not found"); return; }
+  if (!hasAnn) { dbg("annotations[] not found"); }
+  if (!hasSelIdx) { dbg("selectedAnn var not found"); }
+
+  // Attempt to read pan/zoom if present
+  function getView(){
+    const s = (typeof window.viewScale === 'number') ? window.viewScale : 1;
+    const px = (typeof window.panX === 'number') ? window.panX : 0;
+    const py = (typeof window.panY === 'number') ? window.panY : 0;
+    return {s, px, py};
+  }
+
+  // Compute annotation bounds in image space, then convert to screen space using view
+  function annBoundsScreen(a){
+    const v = getView();
+    // Base bounds in image-space
+    const pad = 4;
+    let x = a.x ?? a.cx ?? 0;
+    let y = a.y ?? a.cy ?? 0;
+    let w = a.w ?? a.width ?? 0;
+    let h = a.h ?? a.height ?? 0;
+
+    if ((!w || !h) && ctx){
+      try{
+        const font = a.font || (a.size ? (a.size + 'px sans-serif') : '16px sans-serif');
+        ctx.save(); ctx.font = font;
+        const m = ctx.measureText((a.text||a.label)||'');
+        w = Math.max(w||0, Math.ceil(m.width));
+        const lh = a.size ? a.size : 16;
+        h = Math.max(h||0, lh);
+        ctx.restore();
+      }catch(_){}
+    }
+    // y is text baseline; selection box sits above baseline by 'h'
+    let ix = x - pad, iy = y - h - pad, iw = (w||40) + 2*pad, ih = (h||16) + 2*pad;
+    // Transform to screen (overlay) space
+    const sx = ix * v.s + v.px;
+    const sy = iy * v.s + v.py;
+    const sw = iw * v.s;
+    const sh = ih * v.s;
+    return {x:sx, y:sy, w:sw, h:sh};
+  }
+
+  function drawSelection(){
+    if (!Array.isArray(window.annotations)) return;
+    const i = (window.selectedAnn|0);
+    if (i < 0 || i >= window.annotations.length) return;
+    const a = window.annotations[i]; if (!a) return;
+    const b = annBoundsScreen(a);
+    ctx.save();
+    ctx.setLineDash([6,4]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#6bb2ff';
+    ctx.strokeRect(b.x, b.y, b.w, b.h);
+    ctx.restore();
+    dbg(`drawSelection idx=${i} at (${Math.round(b.x)},${Math.round(b.y)}) ${Math.round(b.w)}x${Math.round(b.h)} view=${JSON.stringify(getView())}`);
+  }
+
+  // Wrap redrawOverlay (again) to ensure we always draw after overlay paint
+  const _ro = window.redrawOverlay;
+  if (typeof _ro === 'function'){
+    window.redrawOverlay = function(){
+      const r = _ro.apply(this, arguments);
+      try { drawSelection(); } catch(e){ dbg("drawSelection error: " + e.message); }
+      return r;
+    };
+    dbg("wrapped redrawOverlay");
+  } else {
+    dbg("no redrawOverlay; using rAF ticker");
+    // Fallback: draw on each animation frame when selection is present
+    function tick(){
+      try { if (typeof window.selectedAnn === 'number' && window.selectedAnn >= 0) drawSelection(); } catch(_){}
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // Click-to-select on overlay (with pan/zoom aware hit test)
+  function hitAtScreen(px, py){
+    if (!Array.isArray(window.annotations)) return -1;
+    for (let i = window.annotations.length-1; i>=0; i--){
+      const a = window.annotations[i]; if (!a) continue;
+      const b = annBoundsScreen(a);
+      if (px>=b.x && px<=b.x+b.w && py>=b.y && py<=b.y+b.h) return i;
+    }
+    return -1;
+  }
+
+  overlay.addEventListener('mousedown', function(ev){
+    const r = overlay.getBoundingClientRect();
+    const x = ev.clientX - r.left;
+    const y = ev.clientY - r.top;
+    const i = hitAtScreen(x,y);
+    if (i >= 0){
+      window.selectedAnn = i;
+      try { window.selectedSym = -1; } catch(_){}
+      dbg("selectedAnn=" + i);
+      try { window.redrawOverlay && window.redrawOverlay(); } catch(_){}
+    } else {
+      dbg(`no hit at (${Math.round(x)},${Math.round(y)})`);
+    }
+  }, true);
+
+  // Delete / Backspace removes selected text
+  window.addEventListener('keydown', function(ev){
+    const key = ev.key || '';
+    if (key !== 'Delete' && key !== 'Backspace' && ev.keyCode !== 46 && ev.keyCode !== 8) return;
+    const ae = document.activeElement;
+    if (ae && /^(input|textarea)$/i.test(ae.tagName)) return;
+    const i = (window.selectedAnn|0);
+    if (Array.isArray(window.annotations) && i >= 0 && i < window.annotations.length){
+      const removed = window.annotations[i];
+      window.annotations.splice(i,1);
+      window.selectedAnn = -1;
+      dbg("deleted text annotation");
+      try { window.redrawOverlay && window.redrawOverlay(); } catch(_){}
+      ev.preventDefault(); ev.stopPropagation();
+    }
+  }, true);
+})();
+</script>
+
+
+<script>
+// *__ann_proxy_v3__* capture overlay text draws, select with dashed box, delete from best-match data array
+(function(){
+  if (window.__annProxyV3) return;
+  window.__annProxyV3 = true;
+
+  function dbg(msg){
+    try { (window.logHistory || console.log)("[ann] " + msg); } catch(_){}
+  }
+
+  const overlay = document.getElementById('overlay');
+  if (!overlay){ dbg("overlay canvas not found"); return; }
+  const ctx = overlay.getContext('2d');
+
+  // View helpers (defaults if not present)
+  function view(){ return {
+    s: (typeof window.viewScale==='number'?window.viewScale:1),
+    px:(typeof window.panX==='number'?window.panX:0),
+    py:(typeof window.panY==='number'?window.panY:0)
+  };}
+  function imgToScreen(x,y){ const v=view(); return {x:x*v.s+v.px, y:y*v.s+v.py}; }
+  function screenToImg(x,y){ const v=view(); return {x:(x - v.px)/v.s, y:(y - v.py)/v.s}; }
+
+  // Capture list for this frame
+  let drawn = []; // {x,y,w,h,text,font}
+
+  // Wrap redrawOverlay to reset capture list each frame
+  const _ro = window.redrawOverlay;
+  if (typeof _ro === 'function'){
+    window.redrawOverlay = function(){
+      drawn = [];
+      const r = _ro.apply(this, arguments);
+      try { drawSelection(); } catch(e){ dbg("drawSelection error: "+e.message); }
+      return r;
+    };
+    dbg("proxy: wrapped redrawOverlay");
+  } else {
+    dbg("proxy: no redrawOverlay; will not auto-clear drawn list");
+  }
+
+  // Patch ctx.fillText only for overlay context
+  const _fillText = ctx.fillText.bind(ctx);
+  ctx.fillText = function(text, x, y){
+    try {
+      // Measure width/height in screen space
+      const f = (this.font || '16px sans-serif');
+      // Approximate width via measureText
+      let w = 0, h = 16;
+      try {
+        const m = this.measureText(String(text));
+        w = Math.ceil(m.width);
+        // height heuristic from font size
+        const m2 = /(\d+(?:\.\d+)?)px/.exec(f);
+        h = m2 ? Math.round(parseFloat(m2[1])) : (m.actualBoundingBoxAscent+m.actualBoundingBoxDescent||16);
+      } catch(_) {}
+      drawn.push({x,y,w,h,text:String(text),font:f});
+    } catch(e){}
+    return _fillText(text, x, y);
+  };
+
+  // Selection state: index into 'drawn'
+  let sel = -1;
+
+  function hit(px, py){
+    for (let i=drawn.length-1;i>=0;i--){
+      const d = drawn[i];
+      // selection box around text baseline
+      const pad=4, bx=d.x - pad, by=d.y - d.h - pad, bw=Math.max(40, d.w)+2*pad, bh=d.h+2*pad;
+      if (px>=bx && px<=bx+bw && py>=by && py<=by+bh) return i;
+    }
+    return -1;
+  }
+
+  function drawSelection(){
+    if (sel<0 || sel>=drawn.length) return;
+    const d = drawn[sel];
+    const pad=4, bx=d.x - pad, by=d.y - d.h - pad, bw=Math.max(40, d.w)+2*pad, bh=d.h+2*pad;
+    ctx.save();
+    ctx.setLineDash([6,4]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#6bb2ff';
+    ctx.strokeRect(bx, by, bw, bh);
+    ctx.restore();
+    dbg(`sel box at (${Math.round(bx)},${Math.round(by)}) ${Math.round(bw)}x${Math.round(bh)} text="${d.text}"`);
+  }
+
+  overlay.addEventListener('mousedown', function(ev){
+    const r = overlay.getBoundingClientRect();
+    const x = ev.clientX - r.left, y = ev.clientY - r.top;
+    const i = hit(x,y);
+    sel = i;
+    if (i>=0){ dbg(`selected drawn[${i}] "${drawn[i].text}"`); try{ window.redrawOverlay && window.redrawOverlay(); }catch(_){ drawSelection(); } }
+    else { dbg(`no hit at (${Math.round(x)},${Math.round(y)})`); }
+  }, true);
+
+  // Find and remove best-matching underlying annotation data for drawn[sel]
+  function deleteSelected(){
+    if (sel<0 || sel>=drawn.length) return false;
+    const d = drawn[sel];
+    // Convert drawn screen baseline to estimated image-space baseline
+    const imgPt = screenToImg(d.x, d.y);
+    let best = {arr:null, idx:-1, dist:1e9, name:""};
+
+    // Consider candidate arrays on window.* that look like annotation lists
+    const keys = Object.keys(window);
+    for (const k of keys){
+      const val = window[k];
+      if (!Array.isArray(val)) continue;
+      // skip huge internal arrays
+      if (val.length>20000) continue;
+      // Find objects with position and text-ish fields
+      for (let i=0;i<val.length;i++){
+        const a = val[i];
+        if (!a || typeof a!=='object') continue;
+        const t = a.text ?? a.label ?? a.title;
+        let ax = a.x ?? a.cx ?? a.left ?? null;
+        let ay = a.y ?? a.cy ?? a.top ?? null;
+        if (typeof t!=='string') continue;
+        if (typeof ax!=='number' || typeof ay!=='number') continue;
+        // Project to screen using view to compare with drawn baseline
+        const sp = imgToScreen(ax, ay);
+        const dx = sp.x - d.x, dy = sp.y - d.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < best.dist && dist < 40){ // reasonable threshold
+          best = {arr:val, idx:i, dist, name:k};
+        }
+      }
+    }
+
+    if (best.arr && best.idx>=0){
+      try {
+        const removed = best.arr.splice(best.idx,1);
+        dbg(`deleted from ${best.name}[${best.idx}] (dist ${best.dist.toFixed(1)})`);
+        sel = -1;
+        return true;
+      } catch(e){
+        dbg("delete error: "+e.message);
+        return false;
+      }
+    } else {
+      dbg("no matching data array found; cannot delete");
+      return false;
+    }
+  }
+
+  window.addEventListener('keydown', function(ev){
+    const key = ev.key || '';
+    if (key!=='Delete' && key!=='Backspace' && ev.keyCode!==46 && ev.keyCode!==8) return;
+    const ae = document.activeElement;
+    if (ae && /^(input|textarea)$/i.test(ae.tagName)) return;
+    if (deleteSelected()){
+      try{ window.redrawOverlay && window.redrawOverlay(); }catch(_){}
+      ev.preventDefault(); ev.stopPropagation();
+    }
+  }, true);
+
+})();
+</script>
+
+
+<script>
+// *__ann_proxy_v4__* multi-canvas text capture + persistent dashed outline on overlay
+(function(){
+  if (window.__annProxyV4) return;
+  window.__annProxyV4 = true;
+
+  function dbg(msg){
+    try { (window.logHistory || console.log)("[ann] " + msg); } catch(_){}
+  }
+
+  // canvases
+  const overlay = document.getElementById('overlay');
+  const view = document.getElementById('view');
+  const arrows = document.getElementById('arrowsCanvas');
+  if (!overlay){ dbg("v4: overlay canvas not found"); return; }
+  const overlayCtx = overlay.getContext('2d');
+  const viewCtx = view && view.getContext ? view.getContext('2d') : null;
+  const arrowsCtx = arrows && arrows.getContext ? arrows.getContext('2d') : null;
+
+  // view transforms
+  function viewT(){ return {
+    s: (typeof window.viewScale==='number'?window.viewScale:1),
+    px:(typeof window.panX==='number'?window.panX:0),
+    py:(typeof window.panY==='number'?window.panY:0)
+  };}
+  function imgToScreen(x,y){ const v=viewT(); return {x:x*v.s+v.px, y:y*v.s+v.py}; }
+
+  // Captured drawn texts each frame (screen space positions)
+  let drawn = []; // {x,y,w,h,text,font,src:'overlay'|'view'|'arrows'}
+
+  // Helper to wrap a 2D context's fillText for capture
+  function hookFillText(ctx, srcName){
+    if (!ctx || ctx.__fillTextHooked) return;
+    const original = ctx.fillText.bind(ctx);
+    ctx.fillText = function(text, x, y){
+      try {
+        const f = (this.font || '16px sans-serif');
+        let w = 0, h = 16;
+        try {
+          const m = this.measureText(String(text));
+          w = Math.ceil(m.width);
+          const m2 = /(\d+(?:\.\d+)?)px/.exec(f);
+          h = m2 ? Math.round(parseFloat(m2[1])) : (m.actualBoundingBoxAscent+m.actualBoundingBoxDescent||16);
+        } catch(_) {}
+        drawn.push({x,y,w,h,text:String(text),font:f,src:srcName});
+      } catch(e){}
+      return original(text, x, y);
+    };
+    ctx.__fillTextHooked = true;
+    dbg(`v4: hooked fillText on ${srcName}`);
+  }
+
+  hookFillText(overlayCtx, 'overlay');
+  hookFillText(viewCtx, 'view');
+  hookFillText(arrowsCtx, 'arrows');
+
+  // selection index into drawn[]
+  let sel = -1;
+
+  // redrawOverlay wrapper to clear capture then repaint selection
+  const _ro = window.redrawOverlay;
+  if (typeof _ro === 'function'){
+    window.redrawOverlay = function(){
+      drawn = [];
+      const r = _ro.apply(this, arguments);
+      try { paintSelection(); } catch(e){ dbg("v4 paintSelection error: "+e.message); }
+      return r;
+    };
+    dbg("v4: wrapped redrawOverlay");
+  } else {
+    dbg("v4: no redrawOverlay to wrap");
+  }
+
+  function drawOutline(ctx, d){
+    const pad=4, bx=d.x - pad, by=d.y - d.h - pad, bw=Math.max(40, d.w)+2*pad, bh=d.h+2*pad;
+    ctx.save();
+    ctx.setLineDash([6,4]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#6bb2ff';
+    ctx.strokeRect(bx, by, bw, bh);
+    ctx.restore();
+  }
+
+  function paintSelection(){
+    if (sel<0 || sel>=drawn.length) return;
+    const d = drawn[sel];
+    drawOutline(overlayCtx, d);
+  }
+
+  function hit(px, py){
+    for (let i=drawn.length-1;i>=0;i--){
+      const d = drawn[i];
+      const pad=4, bx=d.x - pad, by=d.y - d.h - pad, bw=Math.max(40, d.w)+2*pad, bh=d.h+2*pad;
+      if (px>=bx && px<=bx+bw && py>=by && py<=by+bh) return i;
+    }
+    return -1;
+  }
+
+  overlay.addEventListener('mousedown', function(ev){
+    const r = overlay.getBoundingClientRect();
+    const x = ev.clientX - r.left, y = ev.clientY - r.top;
+    const i = hit(x,y);
+    sel = i;
+    if (i>=0){
+      dbg(`v4: selected "${drawn[i].text}" from ${drawn[i].src}`);
+      // draw immediately even if no redraw happens
+      try { paintSelection(); } catch(_){}
+      // also try a normal overlay redraw to refresh capture next frame
+      try { window.redrawOverlay && window.redrawOverlay(); } catch(_){}
+    } else {
+      dbg(`v4: no hit at (${Math.round(x)},${Math.round(y)})`);
+    }
+  }, true);
+
+  // Persistent repaint loop to re-apply outline after app draws
+  function rafLoop(){
+    try { paintSelection(); } catch(_){}
+    requestAnimationFrame(rafLoop);
+  }
+  requestAnimationFrame(rafLoop);
+
+  // Delete/Backspace: find best match in window arrays with {x,y,text|label}
+  function deleteSelected(){
+    if (sel<0 || sel>=drawn.length) return false;
+    const d = drawn[sel];
+    // find closest annotation-like object in window arrays
+    let best = {arr:null, idx:-1, dist:1e9, name:""};
+    const keys = Object.keys(window);
+    for (const k of keys){
+      const v = window[k];
+      if (!Array.isArray(v) || v.length>20000) continue;
+      for (let i=0;i<v.length;i++){
+        const a = v[i];
+        if (!a || typeof a!=='object') continue;
+        const t = a.text ?? a.label ?? a.title;
+        let ax = a.x ?? a.cx ?? a.left ?? null;
+        let ay = a.y ?? a.cy ?? a.top ?? null;
+        if (typeof t!=='string' || typeof ax!=='number' || typeof ay!=='number') continue;
+        const sp = imgToScreen(ax, ay);
+        const dist = Math.hypot(sp.x - d.x, sp.y - d.y);
+        if (dist < best.dist && dist < 50) { best = {arr:v, idx:i, dist, name:k}; }
+      }
+    }
+    if (best.arr){
+      try {
+        best.arr.splice(best.idx, 1);
+        dbg(`v4: deleted from ${best.name}[${best.idx}] (dist ${best.dist.toFixed(1)})`);
+        sel = -1;
+        return true;
+      } catch(e){
+        dbg("v4: delete error " + e.message);
+        return false;
+      }
+    } else {
+      dbg("v4: no matching array found for delete");
+      return false;
+    }
+  }
+
+  window.addEventListener('keydown', function(ev){
+    const key = ev.key || '';
+    if (key!=='Delete' && key!=='Backspace' && ev.keyCode!==46 && ev.keyCode!==8) return;
+    const ae = document.activeElement;
+    if (ae && /^(input|textarea)$/i.test(ae.tagName)) return;
+    if (deleteSelected()){
+      try { window.redrawOverlay && window.redrawOverlay(); } catch(_){}
+      ev.preventDefault(); ev.stopPropagation();
+    }
+  }, true);
+})();
+</script>
+
+
+<script>
+// *__ann_proxy_v4p1__* correct canvas-space mapping (CSS size vs canvas pixels) for hit-tests/outline
+(function(){
+  if (window.__annProxyV4p1) return;
+  window.__annProxyV4p1 = true;
+
+  function dbg(msg){
+    try { (window.logHistory || console.log)("[ann] " + msg); } catch(_){}
+  }
+
+  const overlay = document.getElementById('overlay');
+  if (!overlay){ dbg("v4p1: overlay not found"); return; }
+  const overlayCtx = overlay.getContext('2d');
+
+  // Helper: mouse -> canvas pixel coords (accounts for devicePixelRatio / CSS scaling)
+  function evtToCanvasXY(ev, canvas){
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return { x: (ev.clientX - rect.left) * scaleX, y: (ev.clientY - rect.top) * scaleY, scaleX, scaleY };
+  }
+
+  // Patch the previous v4 handlers if present
+  // We can't rewrite them inline easily, so we add an additional listener with capture=true
+  overlay.addEventListener('mousedown', function(ev){
+    const p = evtToCanvasXY(ev, overlay);
+    // Broadcast for any listener that wants corrected coords
+    const e = new CustomEvent('__annCanvasDown', { detail: p });
+    window.dispatchEvent(e);
+    dbg(`v4p1: corrected click @ (${Math.round(p.x)},${Math.round(p.y)}) scale=(${p.scaleX.toFixed(2)},${p.scaleY.toFixed(2)})`);
+  }, true);
+
+  // If the prior v4 code is listening on mousedown to compute hit(), we also add our own late-pass hit using corrected coords.
+  // We need access to 'drawn' and 'sel'. If not globally accessible, we re-run a best-effort local hit by reading their copies if exposed.
+  // To keep it simple, we implement a parallel selector that stores chosen rect in window.__annSelRect and triggers a repaint.
+  window.addEventListener('__ann_drawn_snapshot', function(ev){
+    // store the latest drawn snapshot for local hit-test
+    window.__annDrawn = ev.detail || [];
+  });
+
+  function hitLocal(px, py){
+    const arr = window.__annDrawn || [];
+    for (let i=arr.length-1;i>=0;i--){
+      const d = arr[i];
+      const pad=4;
+      const bx = d.x - pad, by = d.y - d.h - pad, bw = Math.max(40, d.w) + 2*pad, bh = d.h + 2*pad;
+      if (px>=bx && px<=bx+bw && py>=by && py<=by+bh) return {i, d, rect:{x:bx,y:by,w:bw,h:bh}};
+    }
+    return null;
+  }
+
+  window.addEventListener('__annCanvasDown', function(ev){
+    const p = ev.detail;
+    const hit = hitLocal(p.x, p.y);
+    if (hit){
+      window.__annSelRect = hit.rect;
+      try{ (window.redrawOverlay||function(){})() }catch(_){}
+      // Paint immediately
+      try{
+        overlayCtx.save();
+        overlayCtx.setLineDash([6,4]);
+        overlayCtx.lineWidth = 1;
+        overlayCtx.strokeStyle = '#6bb2ff';
+        overlayCtx.strokeRect(hit.rect.x, hit.rect.y, hit.rect.w, hit.rect.h);
+        overlayCtx.restore();
+      }catch(_){}
+      dbg(`v4p1: outlined at (${Math.round(hit.rect.x)},${Math.round(hit.rect.y)})`);
+    }
+  }, true);
+
+  // Provide a channel for v4 script to publish its drawn[] snapshot every frame
+  // Wrap ctx.fillText to emit snapshot after redrawOverlay if not already publishing
+  // We do a minimal hook if not already present
+  if (!overlayCtx.__annPublish){
+    const list = [];
+    const _ft = overlayCtx.fillText.bind(overlayCtx);
+    overlayCtx.fillText = function(text,x,y){
+      try{
+        const f = (this.font||'16px sans-serif');
+        let w=0,h=16;
+        try{
+          const m = this.measureText(String(text)); w = Math.ceil(m.width);
+          const m2 = /(\d+(?:\.\d+)?)px/.exec(f);
+          h = m2 ? Math.round(parseFloat(m2[1])) : (m.actualBoundingBoxAscent+m.actualBoundingBoxDescent||16);
+        }catch(_){}
+        list.push({x,y,w,h,text:String(text),font:f,src:'overlay'});
+      }catch(_){}
+      return _ft(text,x,y);
+    };
+    overlayCtx.__annPublish = true;
+
+    const _ro = window.redrawOverlay;
+    if (typeof _ro === 'function'){
+      window.redrawOverlay = function(){
+        list.length = 0;
+        const r = _ro.apply(this, arguments);
+        // publish snapshot
+        try{ window.dispatchEvent(new CustomEvent('__ann_drawn_snapshot', { detail: list.slice() })); }catch(_){}
+        return r;
+      };
+      dbg("v4p1: publishing drawn snapshot from overlay");
+    }
+  }
+})();
+</script>
+
+
+<script>
+// *__ann_proxy_v4p2__* cross-canvas normalization + symbol capture + accurate hit/outline
+(function(){
+  if (window.__annProxyV4p2) return;
+  window.__annProxyV4p2 = true;
+
+  function dbg(msg){
+    try { (window.logHistory || console.log)("[ann] " + msg); } catch(_){}
+  }
+
+  const overlay = document.getElementById('overlay');
+  const view = document.getElementById('view');
+  const arrows = document.getElementById('arrowsCanvas');
+  if (!overlay){ dbg("v4p2: overlay not found"); return; }
+  const ov = { canvas: overlay, ctx: overlay.getContext('2d') };
+  const vw = view && view.getContext ? { canvas: view, ctx: view.getContext('2d') } : null;
+  const ar = arrows && arrows.getContext ? { canvas: arrows, ctx: arrows.getContext('2d') } : null;
+
+  // Per-frame list normalized into overlay space
+  let drawn = []; // {x,y,w,h,text,kind:'text'|'symbol'|'other'}
+
+  // Normalize coords from a source canvas's pixel space to overlay's pixel space
+  function normRectFrom(srcCanvas, r){
+    if (!srcCanvas) return r;
+    const sx = srcCanvas.width, sy = srcCanvas.height;
+    const ox = ov.canvas.width, oy = ov.canvas.height;
+    const kx = (sx && ox) ? (ox / sx) : 1;
+    const ky = (sy && oy) ? (oy / sy) : 1;
+    return { x: r.x * kx, y: r.y * ky, w: r.w * kx, h: r.h * ky };
+  }
+
+  // Helpers to hook different contexts
+  function hookCtx(obj, name){
+    if (!obj) return;
+    const {canvas, ctx} = obj;
+    if (!ctx || ctx.__annP2Hooked) return;
+    // wrap fillText
+    const _ft = ctx.fillText.bind(ctx);
+    ctx.fillText = function(text, x, y){
+      try {
+        const f = (this.font||'16px sans-serif');
+        let w=0,h=16;
+        try {
+          const m=this.measureText(String(text));
+          w = Math.ceil(m.width);
+          const px = /(\d+(?:\.\d+)?)px/.exec(f);
+          h = px ? Math.round(parseFloat(px[1])) : (m.actualBoundingBoxAscent+m.actualBoundingBoxDescent||16);
+        } catch(_){}
+        const pad=4, bx=x - pad, by=y - h - pad, bw=Math.max(40,w)+2*pad, bh=h+2*pad;
+        // normalize into overlay space
+        const nr = normRectFrom(canvas, {x:bx, y:by, w:bw, h:bh});
+        drawn.push({x:nr.x, y:nr.y, w:nr.w, h:nr.h, text:String(text), kind:'text'});
+      } catch(_){}
+      return _ft(text,x,y);
+    };
+    // wrap strokeText as well (if used)
+    const _st = ctx.strokeText?.bind(ctx);
+    if (_st){
+      ctx.strokeText = function(text,x,y){
+        try {
+          const f = (this.font||'16px sans-serif');
+          let w=0,h=16;
+          try{
+            const m=this.measureText(String(text));
+            w = Math.ceil(m.width);
+            const px = /(\d+(?:\.\d+)?)px/.exec(f);
+            h = px ? Math.round(parseFloat(px[1])) : (m.actualBoundingBoxAscent+m.actualBoundingBoxDescent||16);
+          }catch(_){}
+          const pad=4, bx=x - pad, by=y - h - pad, bw=Math.max(40,w)+2*pad, bh=h+2*pad;
+          const nr = normRectFrom(canvas, {x:bx, y:by, w:bw, h:bh});
+          drawn.push({x:nr.x, y:nr.y, w:nr.w, h:nr.h, text:String(text), kind:'text'});
+        } catch(_){}
+        return _st(text,x,y);
+      }
+    }
+    // wrap drawImage to approximate symbol bounds (using image size; assumes x,y,width,height signature)
+    const _di = ctx.drawImage.bind(ctx);
+    ctx.drawImage = function(...args){
+      try {
+        let bx=0, by=0, bw=0, bh=0;
+        if (args.length>=3 && typeof args[1]==='number' && typeof args[2]==='number'){
+          // drawImage(img, x, y) or drawImage(img, x, y, w, h)
+          const img = args[0];
+          bx = args[1]; by = args[2];
+          if (args.length>=5){ bw = +args[3]; bh = +args[4]; }
+          else { bw = img && img.width || 32; bh = img && img.height || 32; }
+        } else if (args.length>=9){
+          // drawImage(img, sx,sy,sw,sh, dx,dy,dw,dh)
+          bx = +args[5]; by = +args[6]; bw = +args[7]; bh = +args[8];
+        }
+        if (bw && bh){
+          const pad = 2;
+          const nr = normRectFrom(canvas, {x:bx-pad, y:by-pad, w:bw+2*pad, h:bh+2*pad});
+          drawn.push({x:nr.x, y:nr.y, w:nr.w, h:nr.h, kind:'symbol'});
+        }
+      } catch(_){}
+      return _di(...args);
+    }
+    ctx.__annP2Hooked = true;
+    dbg("v4p2: hooked "+name);
+  }
+
+  hookCtx(ov, "overlay");
+  hookCtx(vw, "view");
+  hookCtx(ar, "arrows");
+
+  // Hit-test and paint use overlay pixel space
+  function hit(px, py){
+    for (let i=drawn.length-1;i>=0;i--){
+      const d = drawn[i];
+      if (px>=d.x && px<=d.x+d.w && py>=d.y && py<=d.y+d.h) return i;
+    }
+    return -1;
+  }
+
+  let sel = -1;
+  function paintSelection(){
+    if (sel<0 || sel>=drawn.length) return;
+    const d = drawn[sel];
+    const ctx = ov.ctx;
+    ctx.save();
+    ctx.setLineDash([6,4]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#6bb2ff';
+    ctx.strokeRect(d.x, d.y, d.w, d.h);
+    ctx.restore();
+  }
+
+  // Wrap redrawOverlay to clear & repaint
+  const _ro = window.redrawOverlay;
+  if (typeof _ro === 'function'){
+    window.redrawOverlay = function(){
+      drawn.length = 0;
+      const r = _ro.apply(this, arguments);
+      try { paintSelection(); } catch(_){}
+      return r;
+    };
+    dbg("v4p2: wrapped redrawOverlay");
+  }
+
+  // Corrected mouse coords in overlay pixel space
+  function evtToCanvasXY(ev, canvas){
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return { x: (ev.clientX - rect.left) * scaleX, y: (ev.clientY - rect.top) * scaleY };
+  }
+
+  overlay.addEventListener('mousedown', function(ev){
+    const p = evtToCanvasXY(ev, ov.canvas);
+    const i = hit(p.x, p.y);
+    sel = i;
+    if (i>=0){
+      dbg(`v4p2: selected ${drawn[i].kind||'item'} at ${Math.round(drawn[i].x)},${Math.round(drawn[i].y)}`);
+      // draw immediately
+      try { paintSelection(); } catch(_){}
+      // also refresh capture on next frame
+      try { window.redrawOverlay && window.redrawOverlay(); } catch(_){}
+    } else {
+      dbg(`v4p2: no hit at (${Math.round(p.x)},${Math.round(p.y)})`);
+    }
+  }, true);
+
+  // Persist outline with rAF in case the app redraws over it
+  (function raf(){
+    try { paintSelection(); } catch(_){}
+    requestAnimationFrame(raf);
+  })();
+
+})();
+</script>
+
+
+<script>
+// *__ann_proxy_v4p3__* transform-aware capture (ctx.getTransform) + overlay normalization
+(function(){
+  if (window.__annProxyV4p3) return;
+  window.__annProxyV4p3 = true;
+
+  function dbg(msg){
+    try { (window.logHistory || console.log)("[ann] " + msg); } catch(_){}
+  }
+
+  const overlay = document.getElementById('overlay');
+  const view = document.getElementById('view');
+  const arrows = document.getElementById('arrowsCanvas');
+  if (!overlay){ dbg("v4p3: overlay not found"); return; }
+  const ov = { canvas: overlay, ctx: overlay.getContext('2d') };
+  const vw = view && view.getContext ? { canvas: view, ctx: view.getContext('2d') } : null;
+  const ar = arrows && arrows.getContext ? { canvas: arrows, ctx: arrows.getContext('2d') } : null;
+
+  // list in overlay pixel space
+  let drawn = [];
+
+  function normFrom(srcCanvas, x, y){
+    if (!srcCanvas) return {x,y};
+    const kx = ov.canvas.width / srcCanvas.width;
+    const ky = ov.canvas.height / srcCanvas.height;
+    return { x: x * kx, y: y * ky };
+  }
+
+  // Transform a rect by current ctx transform; return its AABB in src canvas pixel space
+  function transformRectAABB(ctx, x, y, w, h){
+    // Four corners
+    const m = ctx.getTransform ? ctx.getTransform() : {a:1,b:0,c:0,d:1,e:0,f:0};
+    function tx(px, py){
+      return { x: m.a*px + m.c*py + m.e, y: m.b*px + m.d*py + m.f };
+    }
+    const p1 = tx(x, y);
+    const p2 = tx(x+w, y);
+    const p3 = tx(x+w, y+h);
+    const p4 = tx(x, y+h);
+    const minX = Math.min(p1.x,p2.x,p3.x,p4.x);
+    const maxX = Math.max(p1.x,p2.x,p3.x,p4.x);
+    const minY = Math.min(p1.y,p2.y,p3.y,p4.y);
+    const maxY = Math.max(p1.y,p2.y,p3.y,p4.y);
+    return { x:minX, y:minY, w:(maxX-minX), h:(maxY-minY) };
+  }
+
+  function hookCtx(obj, name){
+    if (!obj) return;
+    const {canvas, ctx} = obj;
+    if (!ctx || ctx.__annP3Hooked) return;
+
+    // fillText
+    const _ft = ctx.fillText.bind(ctx);
+    ctx.fillText = function(text, x, y){
+      try {
+        const f = (this.font||'16px sans-serif');
+        let w=0,h=16;
+        try{
+          const m=this.measureText(String(text));
+          w = Math.ceil(m.width);
+          const px = /(\d+(?:\.\d+)?)px/.exec(f);
+          h = px ? Math.round(parseFloat(px[1])) : (m.actualBoundingBoxAscent+m.actualBoundingBoxDescent||16);
+        }catch(_){}
+        // baseline -> box above by h
+        const pad=4;
+        const local = { x: x - pad, y: y - h - pad, w: Math.max(40,w)+2*pad, h: h+2*pad };
+        const aabb = transformRectAABB(this, local.x, local.y, local.w, local.h);
+        const n1 = normFrom(canvas, aabb.x, aabb.y);
+        const n2 = normFrom(canvas, aabb.x + aabb.w, aabb.y + aabb.h);
+        drawn.push({ x:n1.x, y:n1.y, w:(n2.x-n1.x), h:(n2.y-n1.y), kind:'text', src:name, text:String(text) });
+      } catch(_){}
+      return _ft(text, x, y);
+    };
+
+    // strokeText (if used)
+    const _st = ctx.strokeText?.bind(ctx);
+    if (_st){
+      ctx.strokeText = function(text, x, y){
+        try {
+          const f = (this.font||'16px sans-serif');
+          let w=0,h=16;
+          try{
+            const m=this.measureText(String(text));
+            w = Math.ceil(m.width);
+            const px = /(\d+(?:\.\d+)?)px/.exec(f);
+            h = px ? Math.round(parseFloat(px[1])) : (m.actualBoundingBoxAscent+m.actualBoundingBoxDescent||16);
+          }catch(_){}
+          const pad=4;
+          const local = { x: x - pad, y: y - h - pad, w: Math.max(40,w)+2*pad, h: h+2*pad };
+          const aabb = transformRectAABB(this, local.x, local.y, local.w, local.h);
+          const n1 = normFrom(canvas, aabb.x, aabb.y);
+          const n2 = normFrom(canvas, aabb.x + aabb.w, aabb.y + aabb.h);
+          drawn.push({ x:n1.x, y:n1.y, w:(n2.x-n1.x), h:(n2.y-n1.y), kind:'text', src:name, text:String(text) });
+        } catch(_){}
+        return _st(text, x, y);
+      };
+    }
+
+    // drawImage
+    const _di = ctx.drawImage.bind(ctx);
+    ctx.drawImage = function(...args){
+      try {
+        // Resolve destination rect in local coords
+        let dx=0, dy=0, dw=0, dh=0;
+        if (args.length>=3 && typeof args[1]==='number' && typeof args[2]==='number'){
+          const img = args[0];
+          dx = +args[1]; dy = +args[2];
+          if (args.length>=5){ dw = +args[3]; dh = +args[4]; }
+          else { dw = img?.width || 32; dh = img?.height || 32; }
+        } else if (args.length>=9){
+          dx = +args[5]; dy = +args[6]; dw = +args[7]; dh = +args[8];
+        }
+        if (dw && dh){
+          const pad=2;
+          const local = { x: dx - pad, y: dy - pad, w: dw + 2*pad, h: dh + 2*pad };
+          const aabb = transformRectAABB(this, local.x, local.y, local.w, local.h);
+          const n1 = normFrom(canvas, aabb.x, aabb.y);
+          const n2 = normFrom(canvas, aabb.x + aabb.w, aabb.y + aabb.h);
+          drawn.push({ x:n1.x, y:n1.y, w:(n2.x-n1.x), h:(n2.y-n1.y), kind:'symbol', src:name });
+        }
+      } catch(_){}
+      return _di(...args);
+    };
+
+    ctx.__annP3Hooked = true;
+    dbg("v4p3: hooked "+name);
+  }
+
+  hookCtx(ov, "overlay");
+  hookCtx(vw, "view");
+  hookCtx(ar, "arrows");
+
+  // selection + paint (overlay pixel space)
+  let sel = -1;
+  function paintSel(){
+    if (sel<0 || sel>=drawn.length) return;
+    const d = drawn[sel];
+    const ctx = ov.ctx;
+    ctx.save();
+    ctx.setLineDash([6,4]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#6bb2ff';
+    ctx.strokeRect(d.x, d.y, d.w, d.h);
+    ctx.restore();
+  }
+
+  // wrap redrawOverlay for capture lifecycle
+  const _ro = window.redrawOverlay;
+  if (typeof _ro === 'function'){
+    window.redrawOverlay = function(){
+      drawn.length = 0;
+      const r = _ro.apply(this, arguments);
+      try { paintSel(); } catch(_){}
+      return r;
+    };
+    dbg("v4p3: wrapped redrawOverlay");
+  }
+
+  // mouse mapping into overlay pixel coordinates
+  function evtToCanvasXY(ev, canvas){
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return { x: (ev.clientX - rect.left) * scaleX, y: (ev.clientY - rect.top) * scaleY };
+  }
+
+  function hit(px, py){
+    for (let i=drawn.length-1; i>=0; i--){
+      const d = drawn[i];
+      if (px>=d.x && px<=d.x+d.w && py>=d.y && py<=d.y+d.h) return i;
+    }
+    return -1;
+  }
+
+  overlay.addEventListener('mousedown', function(ev){
+    const p = evtToCanvasXY(ev, ov.canvas);
+    const i = hit(p.x, p.y);
+    sel = i;
+    if (i>=0){
+      dbg(`v4p3: selected ${drawn[i].kind} (src=${drawn[i].src}) at ${Math.round(drawn[i].x)},${Math.round(drawn[i].y)}`);
+      try { paintSel(); } catch(_){}
+      try { window.redrawOverlay && window.redrawOverlay(); } catch(_){}
+    } else {
+      dbg(`v4p3: no hit at (${Math.round(p.x)},${Math.round(p.y)})`);
+    }
+  }, true);
+
+  // keep outline visible
+  (function raf(){ try{ paintSel(); }catch(_){ } requestAnimationFrame(raf); })();
+})();
+</script>
+
 </body>
 
 </html>
