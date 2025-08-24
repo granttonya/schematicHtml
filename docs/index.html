@@ -5727,6 +5727,326 @@ function __arrows_computePathLength(path){
 })();
 </script>
 
+
+<script>
+// *__ann_proxy_v4p4__* text baseline alignment + resize handles (text & symbols)
+(function(){
+  if (window.__annProxyV4p4) return;
+  window.__annProxyV4p4 = true;
+
+  function dbg(msg){
+    try { (window.logHistory || console.log)("[ann] v4p4: " + msg); } catch(_){}
+  }
+
+  const overlay = document.getElementById('overlay');
+  const view = document.getElementById('view');
+  const arrows = document.getElementById('arrowsCanvas');
+  if (!overlay){ dbg("overlay not found"); return; }
+  const ov = { canvas: overlay, ctx: overlay.getContext('2d') };
+  const vw = view && view.getContext ? { canvas: view, ctx: view.getContext('2d') } : null;
+  const ar = arrows && arrows.getContext ? { canvas: arrows, ctx: arrows.getContext('2d') } : null;
+
+  // Items captured per frame in overlay pixel space
+  let drawn = []; // {x,y,w,h,kind:'text'|'symbol', src, text?, t?:DOMMatrix}
+  let sel = -1;
+  let selAt = null; // snapshot of selected box
+
+  function normFrom(srcCanvas, x, y){
+    if (!srcCanvas) return {x,y};
+    const kx = ov.canvas.width / srcCanvas.width;
+    const ky = ov.canvas.height / srcCanvas.height;
+    return { x: x * kx, y: y * ky };
+  }
+
+  function transformRectAABB(ctx, x, y, w, h){
+    const m = ctx.getTransform ? ctx.getTransform() : {a:1,b:0,c:0,d:1,e:0,f:0};
+    function tx(px, py){
+      return { x: m.a*px + m.c*py + m.e, y: m.b*px + m.d*py + m.f };
+    }
+    const p1 = tx(x, y);
+    const p2 = tx(x+w, y);
+    const p3 = tx(x+w, y+h);
+    const p4 = tx(x, y+h);
+    const minX = Math.min(p1.x,p2.x,p3.x,p4.x);
+    const maxX = Math.max(p1.x,p2.x,p3.x,p4.x);
+    const minY = Math.min(p1.y,p2.y,p3.y,p4.y);
+    const maxY = Math.max(p1.y,p2.y,p3.y,p4.y);
+    return { x:minX, y:minY, w:(maxX-minX), h:(maxY-minY) };
+  }
+
+  function handleTextBaseline(ctx, x, y, w, h){
+    // Convert given (x,y) based on ctx.textBaseline to top-left box
+    const tb = (ctx.textBaseline || 'alphabetic').toLowerCase();
+    if (tb === 'alphabetic' || tb === 'ideographic' || tb === 'bottom'){
+      // y is on or near the bottom baseline -> move box up by h
+      return { x: x, y: y - h, w: w, h: h };
+    } else if (tb === 'top' || tb === 'hanging'){
+      // y already top -> unchanged
+      return { x:x, y:y, w:w, h:h };
+    } else if (tb === 'middle'){
+      // y is middle -> shift up by h/2
+      return { x: x, y: y - h/2, w: w, h: h };
+    }
+    // default
+    return { x: x, y: y - h, w: w, h: h };
+  }
+
+  function hookCtx(obj, name){
+    if (!obj) return;
+    const {canvas, ctx} = obj;
+    if (!ctx || ctx.__annP4Hooked) return;
+
+    const _ft = ctx.fillText.bind(ctx);
+    ctx.fillText = function(text, x, y){
+      try {
+        const f = (this.font||'16px sans-serif');
+        let w=0,h=16;
+        try{
+          const m=this.measureText(String(text));
+          w = Math.ceil(m.width);
+          const px = /(\d+(?:\.\d+)?)px/.exec(f);
+          h = px ? Math.round(parseFloat(px[1])) : (m.actualBoundingBoxAscent+m.actualBoundingBoxDescent||16);
+        }catch(_){}
+        // apply baseline
+        const tb = handleTextBaseline(this, x, y, Math.max(40,w), h);
+        // add padding for selection affordance
+        const pad=4;
+        const local = { x: tb.x - pad, y: tb.y - pad, w: tb.w + 2*pad, h: tb.h + 2*pad };
+        const aabb = transformRectAABB(this, local.x, local.y, local.w, local.h);
+        const n1 = normFrom(canvas, aabb.x, aabb.y);
+        const n2 = normFrom(canvas, aabb.x + aabb.w, aabb.y + aabb.h);
+        drawn.push({ x:n1.x, y:n1.y, w:(n2.x-n1.x), h:(n2.y-n1.y), kind:'text', src:name, text:String(text) });
+      } catch(_){}
+      return _ft(text, x, y);
+    };
+
+    const _st = ctx.strokeText?.bind(ctx);
+    if (_st){
+      ctx.strokeText = function(text, x, y){
+        try {
+          const f = (this.font||'16px sans-serif');
+          let w=0,h=16;
+          try{
+            const m=this.measureText(String(text));
+            w = Math.ceil(m.width);
+            const px = /(\d+(?:\.\d+)?)px/.exec(f);
+            h = px ? Math.round(parseFloat(px[1])) : (m.actualBoundingBoxAscent+m.actualBoundingBoxDescent||16);
+          }catch(_){}
+          const tb = handleTextBaseline(this, x, y, Math.max(40,w), h);
+          const pad=4;
+          const local = { x: tb.x - pad, y: tb.y - pad, w: tb.w + 2*pad, h: tb.h + 2*pad };
+          const aabb = transformRectAABB(this, local.x, local.y, local.w, local.h);
+          const n1 = normFrom(canvas, aabb.x, aabb.y);
+          const n2 = normFrom(canvas, aabb.x + aabb.w, aabb.y + aabb.h);
+          drawn.push({ x:n1.x, y:n1.y, w:(n2.x-n1.x), h:(n2.y-n1.y), kind:'text', src:name, text:String(text) });
+        } catch(_){}
+        return _st(text, x, y);
+      };
+    }
+
+    const _di = ctx.drawImage.bind(ctx);
+    ctx.drawImage = function(...args){
+      try {
+        let dx=0, dy=0, dw=0, dh=0;
+        if (args.length>=3 && typeof args[1]==='number' && typeof args[2]==='number'){
+          const img = args[0];
+          dx = +args[1]; dy = +args[2];
+          if (args.length>=5){ dw = +args[3]; dh = +args[4]; }
+          else { dw = img?.width || 32; dh = img?.height || 32; }
+        } else if (args.length>=9){
+          dx = +args[5]; dy = +args[6]; dw = +args[7]; dh = +args[8];
+        }
+        if (dw && dh){
+          const pad=2;
+          const local = { x: dx - pad, y: dy - pad, w: dw + 2*pad, h: dh + 2*pad };
+          const aabb = transformRectAABB(this, local.x, local.y, local.w, local.h);
+          const n1 = normFrom(canvas, aabb.x, aabb.y);
+          const n2 = normFrom(canvas, aabb.x + aabb.w, aabb.y + aabb.h);
+          drawn.push({ x:n1.x, y:n1.y, w:(n2.x-n1.x), h:(n2.y-n1.y), kind:'symbol', src:name });
+        }
+      } catch(_){}
+      return _di(...args);
+    };
+
+    ctx.__annP4Hooked = true;
+    dbg("hooked "+name);
+  }
+
+  hookCtx(ov, "overlay");
+  hookCtx(vw, "view");
+  hookCtx(ar, "arrows");
+
+  // redraw integration
+  const _ro = window.redrawOverlay;
+  if (typeof _ro === 'function'){
+    window.redrawOverlay = function(){
+      drawn.length = 0;
+      const r = _ro.apply(this, arguments);
+      try { paint(); } catch(_){}
+      return r;
+    };
+    dbg("wrapped redrawOverlay");
+  }
+
+  // Pointer helpers
+  function evtToCanvasXY(ev, canvas){
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return { x: (ev.clientX - rect.left) * scaleX, y: (ev.clientY - rect.top) * scaleY };
+  }
+
+  // Selection & paint
+  function paint(){
+    if (sel<0 || sel>=drawn.length) return;
+    const d = selAt || drawn[sel];
+    const ctx = ov.ctx;
+    ctx.save();
+    ctx.setLineDash([6,4]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#6bb2ff';
+    ctx.strokeRect(d.x, d.y, d.w, d.h);
+    // handles
+    const hs = 6;
+    const corners = [
+      {cx:d.x, cy:d.y,      cursor:'nwse-resize', id:'nw'},
+      {cx:d.x+d.w, cy:d.y,  cursor:'nesw-resize', id:'ne'},
+      {cx:d.x, cy:d.y+d.h,  cursor:'nesw-resize', id:'sw'},
+      {cx:d.x+d.w, cy:d.y+d.h, cursor:'nwse-resize', id:'se'},
+    ];
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#2d76ff';
+    for (const c of corners){
+      ctx.fillRect(c.cx - hs/2, c.cy - hs/2, hs, hs);
+      ctx.strokeRect(c.cx - hs/2, c.cy - hs/2, hs, hs);
+    }
+    ctx.restore();
+  }
+
+  function hit(px, py){
+    for (let i=drawn.length-1; i>=0; i--){
+      const d = drawn[i];
+      if (px>=d.x && px<=d.x+d.w && py>=d.y && py<=d.y+d.h) return i;
+    }
+    return -1;
+  }
+
+  function hitHandle(px, py){
+    if (sel<0 || sel>=drawn.length) return null;
+    const d = selAt || drawn[sel];
+    const hs = 8;
+    const corners = [
+      {cx:d.x, cy:d.y,      id:'nw'},
+      {cx:d.x+d.w, cy:d.y,  id:'ne'},
+      {cx:d.x, cy:d.y+d.h,  id:'sw'},
+      {cx:d.x+d.w, cy:d.y+d.h, id:'se'},
+    ];
+    for (const c of corners){
+      if (px>=c.cx-hs/2 && px<=c.cx+hs/2 && py>=c.cy-hs/2 && py<=c.cy+hs/2) return c.id;
+    }
+    return null;
+  }
+
+  let resizing = null;
+  let dragStart = null;
+
+  overlay.addEventListener('mousedown', function(ev){
+    const p = evtToCanvasXY(ev, ov.canvas);
+    const h = hitHandle(p.x, p.y);
+    if (h){
+      resizing = h;
+      selAt = Object.assign({}, drawn[sel]); // snapshot
+      dragStart = { x:p.x, y:p.y, box:Object.assign({}, selAt) };
+      dbg("resize start at "+h);
+      ev.preventDefault(); ev.stopPropagation();
+      return;
+    }
+    // else normal selection
+    const i = hit(p.x, p.y);
+    sel = i; selAt = null;
+    if (i>=0){
+      dbg(`selected ${drawn[i].kind} (src=${drawn[i].src})`);
+      try { paint(); } catch(_){}
+      try { window.redrawOverlay && window.redrawOverlay(); } catch(_){}
+    }
+  }, true);
+
+  overlay.addEventListener('mousemove', function(ev){
+    if (!resizing || !dragStart) return;
+    const p = evtToCanvasXY(ev, ov.canvas);
+    const b = dragStart.box;
+    let nx = b.x, ny = b.y, nw = b.w, nh = b.h;
+    if (resizing === 'se'){ nw = Math.max(4, b.w + (p.x - dragStart.x)); nh = Math.max(4, b.h + (p.y - dragStart.y)); }
+    if (resizing === 'ne'){ nw = Math.max(4, b.w + (p.x - dragStart.x)); nh = Math.max(4, b.h - (p.y - dragStart.y)); ny = b.y + (p.y - dragStart.y); }
+    if (resizing === 'sw'){ nw = Math.max(4, b.w - (p.x - dragStart.x)); nh = Math.max(4, b.h + (p.y - dragStart.y)); nx = b.x + (p.x - dragStart.x); }
+    if (resizing === 'nw'){ nw = Math.max(4, b.w - (p.x - dragStart.x)); nh = Math.max(4, b.h - (p.y - dragStart.y)); nx = b.x + (p.x - dragStart.x); ny = b.y + (p.y - dragStart.y); }
+    selAt = { x:nx, y:ny, w:nw, h:nh };
+    try { window.redrawOverlay && window.redrawOverlay(); } catch(_){ paint(); }
+  }, true);
+
+  function applyResizeToUnderlying(selBox, oldBox){
+    // Compute uniform scale ratio by height
+    const scale = selBox.h / Math.max(1, oldBox.h);
+    // Find best matching object and set size/scale/width/height
+    let best = {arr:null, idx:-1, dist:1e9, name:""};
+    const keys = Object.keys(window);
+    for (const k of keys){
+      const v = window[k];
+      if (!Array.isArray(v) || v.length>20000) continue;
+      for (let i=0;i<v.length;i++){
+        const a = v[i];
+        if (!a || typeof a!=='object') continue;
+        let ax = a.x ?? a.cx ?? a.left ?? null;
+        let ay = a.y ?? a.cy ?? a.top ?? null;
+        if (typeof ax!=='number' || typeof ay!=='number') continue;
+        // map obj anchor to overlay space approx by using view transforms if available
+        const s = (typeof window.viewScale==='number'?window.viewScale:1);
+        const px=(typeof window.panX==='number'?window.panX:0);
+        const py=(typeof window.panY==='number'?window.panY:0);
+        const sx = ax*s + px, sy = ay*s + py;
+        const dx = (sx - (oldBox.x + oldBox.w/2));
+        const dy = (sy - (oldBox.y + oldBox.h/2));
+        const dist = Math.hypot(dx,dy);
+        if (dist < best.dist && dist < 120) best = {arr:v, idx:i, dist, name:k};
+      }
+    }
+    if (best.arr){
+      const a = best.arr[best.idx];
+      // text first
+      if ('size' in a && typeof a.size === 'number'){
+        a.size = Math.max(6, a.size * scale);
+      } else if ('fontSize' in a && typeof a.fontSize === 'number'){
+        a.fontSize = Math.max(6, a.fontSize * scale);
+      } else if ('w' in a && 'h' in a){
+        a.w = Math.max(4, a.w * scale);
+        a.h = Math.max(4, a.h * scale);
+      } else if ('width' in a && 'height' in a){
+        a.width = Math.max(4, a.width * scale);
+        a.height = Math.max(4, a.height * scale);
+      } else if ('scale' in a && typeof a.scale === 'number'){
+        a.scale = Math.max(0.1, a.scale * scale);
+      }
+      dbg(`applied scale ${scale.toFixed(2)} to ${best.name}[${best.idx}]`);
+      try { window.redrawOverlay && window.redrawOverlay(); } catch(_){}
+    } else {
+      dbg("resize: no matching underlying object found");
+    }
+  }
+
+  overlay.addEventListener('mouseup', function(ev){
+    if (!resizing || !dragStart || sel<0 || sel>=drawn.length) { resizing = null; dragStart = null; return; }
+    const oldBox = dragStart.box;
+    const newBox = selAt;
+    resizing = null; dragStart = null;
+    applyResizeToUnderlying(newBox, oldBox);
+  }, true);
+
+  // keep outline visible
+  (function raf(){ try{ paint(); }catch(_){ } requestAnimationFrame(raf); })();
+})();
+</script>
+
 </body>
 
 </html>
