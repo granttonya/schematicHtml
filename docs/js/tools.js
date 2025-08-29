@@ -54,7 +54,28 @@ function hitTestAnnotation(ix, iy) {
     return -1;
 }
 
+function ensureSegmentPath(seg) {
+    if (seg.path && seg.bbox) return;
+    const path = new Path2D();
+    path.moveTo(seg.points[0].x, seg.points[0].y);
+    let minX = seg.points[0].x, maxX = minX;
+    let minY = seg.points[0].y, maxY = minY;
+    for (let i = 1; i < seg.points.length; i++) {
+        const pt = seg.points[i];
+        path.lineTo(pt.x, pt.y);
+        if (pt.x < minX) minX = pt.x;
+        if (pt.x > maxX) maxX = pt.x;
+        if (pt.y < minY) minY = pt.y;
+        if (pt.y > maxY) maxY = pt.y;
+    }
+    seg.path = path;
+    seg.bbox = { minX, maxX, minY, maxY };
+}
+
 function hitTestSegment(ix, iy) {
+ codex/find-better-mouse-click-detection-method-sip7ac
+    // Use a cached Path2D and bounding box check for accurate hit testing
+
     // Use the canvas API to determine if the point lies within a stroked path
  codex/find-better-mouse-click-detection-method-sqdvfk
 
@@ -63,12 +84,23 @@ function hitTestSegment(ix, iy) {
     const tol = 5 / viewScale; // constant screen-space tolerance
  DevSchmeaticHtml
  DevSchmeaticHtml
+ DevSchmeaticHtml
     for (let li = layers.length - 1; li >= 0; li--) {
         const layer = layers[li];
         if (!layer.visible) continue;
         for (let si = layer.segments.length - 1; si >= 0; si--) {
             const seg = layer.segments[si];
             if (!seg || seg.points.length < 2) continue;
+ codex/find-better-mouse-click-detection-method-sip7ac
+            ensureSegmentPath(seg);
+            const half = (layer.thickness / viewScale) / 2;
+            const { minX, maxX, minY, maxY } = seg.bbox;
+            if (ix < minX - half || ix > maxX + half || iy < minY - half || iy > maxY + half) continue;
+            hitCtx.lineWidth = layer.thickness / viewScale;
+            hitCtx.lineCap = 'round';
+            hitCtx.lineJoin = 'round';
+            if (hitCtx.isPointInStroke(seg.path, ix, iy)) {
+
  codex/find-better-mouse-click-detection-method-sqdvfk
             // Use the segment's actual thickness so hits only register on the line itself
             hitCtx.lineWidth = layer.thickness / viewScale;
@@ -88,6 +120,7 @@ function hitTestSegment(ix, iy) {
                 hitCtx.lineTo(seg.points[i].x, seg.points[i].y);
             }
             if (hitCtx.isPointInStroke(ix, iy)) {
+ DevSchmeaticHtml
                 return { layer: li, index: si };
             }
         }

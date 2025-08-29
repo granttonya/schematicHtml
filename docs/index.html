@@ -1605,6 +1605,8 @@ consoleRun.addEventListener('click',()=> runCommand(consoleIn.value));
 consoleIn.addEventListener('keydown',(e)=>{ if(e.key==='Enter') runCommand(consoleIn.value); });
 clearHistoryBtn.addEventListener('click',()=>{ history=[]; historyList.innerHTML=''; logHistory('History cleared'); });
 
+ codex/find-better-mouse-click-detection-method-sip7ac
+
 function hitTestAnnotation(ix,iy){
   for(let i=annotations.length-1;i>=0;i--){
     const a=annotations[i]; const size=Math.max(10, +a.size||18);
@@ -1648,6 +1650,7 @@ function distPointToSegment(px,py,x1,y1,x2,y2){
  DevSchmeaticHtml
 }
 
+ DevSchmeaticHtml
 function eraseAt(ix,iy,size){ if(!layers.length) return; clearMask(layers[activeLayer].mask, Math.round(ix), Math.round(iy), Math.max(1, Math.round(size/2))); }
 function eraseLineTo(ix,iy,size){ if(!layers.length) return; if(!lastErase){ lastErase={x:ix,y:iy}; eraseAt(ix,iy,size); return; } const steps=Math.ceil(Math.hypot(ix-lastErase.x, iy-lastErase.y) / 1); for(let t=0;t<=steps;t++){ const x=lerp(lastErase.x,ix,t/steps); const y=lerp(lastErase.y,iy,t/steps); eraseAt(x,y,size); } lastErase={x:ix,y:iy}; }
 
