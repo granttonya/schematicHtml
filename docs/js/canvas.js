@@ -57,20 +57,23 @@ function drawBase() {
     ctx.restore();
 }
 
-function drawLayer(layer, ctx) {
+function drawLayer(layer, ctx, layerIndex) {
     if (!layer.visible) return;
     ctx.globalAlpha = layer.opacity;
-    ctx.strokeStyle = layer.color;
     ctx.lineWidth = layer.thickness / viewScale;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    for (const seg of layer.segments) {
+    for (let si = 0; si < layer.segments.length; si++) {
+        const seg = layer.segments[si];
         ctx.beginPath();
         for (let i = 0; i < seg.points.length; i++) {
             const pt = seg.points[i];
             if (i === 0) ctx.moveTo(pt.x, pt.y);
             else ctx.lineTo(pt.x, pt.y);
         }
+        // Highlight selected segments in cyan; otherwise use layer color
+        const isSelected = selectedSeg.some(s => s.layer === layerIndex && s.index === si);
+        ctx.strokeStyle = isSelected ? 'cyan' : layer.color;
         ctx.stroke();
     }
 }
@@ -85,9 +88,7 @@ function redrawOverlay() {
     applyViewTransform(octx);
 
     // Draw all layers
-    for (const layer of layers) {
-        drawLayer(layer, octx);
-    }
+    layers.forEach((layer, idx) => drawLayer(layer, octx, idx));
 
     // Draw symbols
     if (symbols.length > 0) {
@@ -108,6 +109,23 @@ function redrawOverlay() {
                 octx.lineWidth = 1 / viewScale;
                 octx.strokeRect(a.x - 2, a.y - a.size / viewScale, octx.measureText(a.text).width + 4, a.size / viewScale + 4);
             }
+        }
+    }
+
+    // Draw traced highlight paths
+    if (highlightPaths.length > 0) {
+        octx.strokeStyle = config.color;
+        octx.lineWidth = config.thickness / viewScale;
+        octx.lineCap = 'round';
+        octx.lineJoin = 'round';
+        for (const path of highlightPaths) {
+            if (path.length < 2) continue;
+            octx.beginPath();
+            octx.moveTo(path[0].x, path[0].y);
+            for (let i = 1; i < path.length; i++) {
+                octx.lineTo(path[i].x, path[i].y);
+            }
+            octx.stroke();
         }
     }
 

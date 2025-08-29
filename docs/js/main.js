@@ -50,6 +50,7 @@ function resetView() {
     panX = view.width / 2;
     panY = view.height / 2;
     viewScale = 1.0;
+    highlightPaths = [];
     drawBase();
     redrawOverlay();
 }
@@ -99,9 +100,16 @@ function setupEventListeners() {
             return;
         }
 
+        if (highlightMode) {
+            if (e.shiftKey) highlightPaths = [];
+            else highlightPaths = traceSegment(ix, iy);
+            redrawOverlay();
+            return;
+        }
+
         let hit = hitTestSymbol(ix, iy);
         if (hit >= 0) {
-            selectedSym = hit; selectedSeg = -1; selectedAnn = -1;
+            selectedSym = hit; selectedSeg = []; selectedAnn = -1;
             draggingSym = true; suppressNextClick = true;
             syncSymbolUI();
             redrawOverlay();
@@ -110,7 +118,7 @@ function setupEventListeners() {
 
         hit = hitTestAnnotation(ix, iy);
         if (hit >= 0) {
-            selectedAnn = hit; selectedSym = -1; selectedSeg = -1;
+            selectedAnn = hit; selectedSym = -1; selectedSeg = [];
             draggingAnn = true; annOffset.dx = ix - annotations[hit].x; annOffset.dy = iy - annotations[hit].y;
             suppressNextClick = true;
             redrawOverlay();
@@ -118,9 +126,11 @@ function setupEventListeners() {
         }
 
         hit = hitTestSegment(ix, iy);
-        if (hit >= 0) {
-            selectedSeg = hit; selectedSym = -1; selectedAnn = -1;
-            draggingSeg = true; lastWorld = {x:ix, y:iy};
+        if (hit) {
+            // Collect all connected segments to highlight entire path
+            selectedSeg = collectConnectedSegments(hit.layer, hit.index);
+            selectedSym = -1; selectedAnn = -1;
+            // Highlight segment without starting a drag operation
             suppressNextClick = true;
             redrawOverlay();
             return;
