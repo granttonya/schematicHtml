@@ -72,6 +72,29 @@ function ensureSegmentPath(seg) {
     seg.bbox = { minX, maxX, minY, maxY };
 }
 
+ codex/find-better-mouse-click-detection-method-jn7jky
+function hitTestSegment(x, y) {
+    // Accept either screen or image coordinates.
+    // If the point appears to be in image space, convert it.
+    let sx = x, sy = y, ix = x, iy = y;
+    if (x >= 0 && x <= view.width && y >= 0 && y <= view.height) {
+        [ix, iy] = screenToImg(x, y);
+    } else {
+        [sx, sy] = imgToScreen(x, y);
+    }
+
+    hitCtx.save();
+    applyViewTransform(hitCtx);
+    for (let li = layers.length - 1; li >= 0; li--) {
+        const layer = layers[li];
+        if (!layer.visible) continue;
+        hitCtx.lineWidth = layer.thickness / viewScale;
+        hitCtx.lineCap = 'round';
+        hitCtx.lineJoin = 'round';
+        for (let si = layer.segments.length - 1; si >= 0; si--) {
+            const seg = layer.segments[si];
+            if (!seg || seg.points.length < 2) continue;
+
 function hitTestSegment(ix, iy) {
  codex/find-better-mouse-click-detection-method-3x7yw3
     // Use a cached Path2D and bounding box check for accurate hit testing
@@ -99,10 +122,15 @@ function hitTestSegment(ix, iy) {
 
  codex/find-better-mouse-click-detection-method-sip7ac
 DevSchmeaticHtml
+DevSchmeaticHtml
             ensureSegmentPath(seg);
             const half = (layer.thickness / viewScale) / 2;
             const { minX, maxX, minY, maxY } = seg.bbox;
             if (ix < minX - half || ix > maxX + half || iy < minY - half || iy > maxY + half) continue;
+ codex/find-better-mouse-click-detection-method-jn7jky
+            if (hitCtx.isPointInStroke(seg.path, sx, sy)) {
+                hitCtx.restore();
+
             hitCtx.lineWidth = layer.thickness / viewScale;
             hitCtx.lineCap = 'round';
             hitCtx.lineJoin = 'round';
@@ -131,10 +159,12 @@ codex/find-better-mouse-click-detection-method-3x7yw3
             if (hitCtx.isPointInStroke(ix, iy)) {
  DevSchmeaticHtml
  DevSchmeaticHtml
+DevSchmeaticHtml
                 return { layer: li, index: si };
             }
         }
     }
+    hitCtx.restore();
     return null;
 }
 

@@ -134,7 +134,7 @@ function setupEventListeners() {
             return;
         }
 
-        hit = hitTestSegment(ix, iy);
+        hit = hitTestSegment(e.offsetX, e.offsetY);
         if (hit) {
             selectedSeg = hit;
             selectedSym = -1;
