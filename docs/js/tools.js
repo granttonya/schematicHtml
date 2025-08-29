@@ -76,6 +76,7 @@ function pointToSegmentDistance(px, py, p1, p2) {
     const clamped = Math.max(0, Math.min(1, t));
     const x = x1 + clamped * dx, y = y1 + clamped * dy;
     return Math.hypot(px - x, py - y);
+ codex/fix-line-drawing-color-on-click-xt54x0
 }
 
 function pointsEqual(p1, p2, tol = 0.1) {
@@ -106,6 +107,8 @@ function collectConnectedSegments(layerIndex, startIndex) {
         }
     }
     return result;
+
+DevSchmeaticHtml
 }
 
 // Image analysis

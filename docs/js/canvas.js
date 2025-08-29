@@ -71,9 +71,17 @@ function drawLayer(layer, ctx, layerIndex) {
             if (i === 0) ctx.moveTo(pt.x, pt.y);
             else ctx.lineTo(pt.x, pt.y);
         }
+codex/fix-line-drawing-color-on-click-xt54x0
         // Highlight selected segments in cyan; otherwise use layer color
         const isSelected = selectedSeg.some(s => s.layer === layerIndex && s.index === si);
         ctx.strokeStyle = isSelected ? 'cyan' : layer.color;
+        // Highlight selected segment in cyan; otherwise use layer color
+        if (selectedSeg && selectedSeg.layer === layerIndex && selectedSeg.index === si) {
+            ctx.strokeStyle = 'cyan';
+        } else {
+            ctx.strokeStyle = layer.color;
+        }
+ DevSchmeaticHtml
         ctx.stroke();
     }
 }
