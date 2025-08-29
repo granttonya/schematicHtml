@@ -56,14 +56,22 @@ function hitTestAnnotation(ix, iy) {
 
 function hitTestSegment(ix, iy) {
     // Use the canvas API to determine if the point lies within a stroked path
+ codex/find-better-mouse-click-detection-method-40nq5x
+
     const tol = 5 / viewScale; // constant screen-space tolerance
+ DevSchmeaticHtml
     for (let li = layers.length - 1; li >= 0; li--) {
         const layer = layers[li];
         if (!layer.visible) continue;
         for (let si = layer.segments.length - 1; si >= 0; si--) {
             const seg = layer.segments[si];
             if (!seg || seg.points.length < 2) continue;
+ codex/find-better-mouse-click-detection-method-40nq5x
+            // Use the segment's actual thickness so hits only register on the line itself
+            hitCtx.lineWidth = layer.thickness / viewScale;
+
             hitCtx.lineWidth = layer.thickness / viewScale + 2 * tol;
+ DevSchmeaticHtml
             hitCtx.lineCap = 'round';
             hitCtx.lineJoin = 'round';
             hitCtx.beginPath();

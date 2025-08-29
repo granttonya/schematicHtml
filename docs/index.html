@@ -1615,13 +1615,15 @@ function hitTestAnnotation(ix,iy){
   return -1;
 }
 function hitTestSegment(ix,iy){
-  let best=-1, bestD=6;
-  for(let i=0;i<segments.length;i++){
+  for(let i=segments.length-1;i>=0;i--){
     const s=segments[i];
-    const d = distPointToSegment(ix,iy, s.x1,s.y1,s.x2,s.y2);
-    if(d<bestD){ bestD=d; best=i; }
+    const L=layers[s.layer];
+    if(!L || !L.visible) continue;
+    const tol=Math.max((s.thick||1)/2,0.5);
+    const d=distPointToSegment(ix,iy,s.x1,s.y1,s.x2,s.y2);
+    if(d<=tol) return i;
   }
-  return best;
+  return -1;
 }
 function distPointToSegment(px,py,x1,y1,x2,y2){
   const vx=x2-x1, vy=y2-y1, wx=px-x1, wy=py-y1;
