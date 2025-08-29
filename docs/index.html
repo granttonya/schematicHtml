@@ -1605,35 +1605,6 @@ consoleRun.addEventListener('click',()=> runCommand(consoleIn.value));
 consoleIn.addEventListener('keydown',(e)=>{ if(e.key==='Enter') runCommand(consoleIn.value); });
 clearHistoryBtn.addEventListener('click',()=>{ history=[]; historyList.innerHTML=''; logHistory('History cleared'); });
 
-function hitTestAnnotation(ix,iy){
-  for(let i=annotations.length-1;i>=0;i--){
-    const a=annotations[i]; const size=Math.max(10, +a.size||18);
-    const m=document.createElement('canvas').getContext('2d'); m.font=`${size}px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif`;
-    const w=Math.max(10, m.measureText(a.text||'').width); const h=Math.max(10, size*1.2);
-    if(ix>=a.x && ix<=a.x+w && iy>=a.y-h/2 && iy<=a.y+h/2) return i;
-  }
-  return -1;
-}
-function hitTestSegment(ix,iy){
-  let best=-1, bestD=6;
-  for(let i=0;i<segments.length;i++){
-    const s=segments[i];
-    const d = distPointToSegment(ix,iy, s.x1,s.y1,s.x2,s.y2);
-    if(d<bestD){ bestD=d; best=i; }
-  }
-  return best;
-}
-function distPointToSegment(px,py,x1,y1,x2,y2){
-  const vx=x2-x1, vy=y2-y1, wx=px-x1, wy=py-y1;
-  const c1 = vx*wx + vy*wy;
-  if(c1<=0) return Math.hypot(px-x1,py-y1);
-  const c2 = vx*vx + vy*vy;
-  if(c2<=c1) return Math.hypot(px-x2,py-y2);
-  const b = c1 / c2;
-  const bx = x1 + b*vx, by = y1 + b*vy;
-  return Math.hypot(px-bx, py-by);
-}
-
 function eraseAt(ix,iy,size){ if(!layers.length) return; clearMask(layers[activeLayer].mask, Math.round(ix), Math.round(iy), Math.max(1, Math.round(size/2))); }
 function eraseLineTo(ix,iy,size){ if(!layers.length) return; if(!lastErase){ lastErase={x:ix,y:iy}; eraseAt(ix,iy,size); return; } const steps=Math.ceil(Math.hypot(ix-lastErase.x, iy-lastErase.y) / 1); for(let t=0;t<=steps;t++){ const x=lerp(lastErase.x,ix,t/steps); const y=lerp(lastErase.y,iy,t/steps); eraseAt(x,y,size); } lastErase={x:ix,y:iy}; }
 
