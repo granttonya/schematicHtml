@@ -109,7 +109,15 @@ function setupEventListeners() {
 
         let hit = hitTestSymbol(ix, iy);
         if (hit >= 0) {
+codex/fix-line-drawing-color-on-click-874em8
             selectedSym = hit; selectedSeg = []; selectedAnn = -1;
+
+ codex/fix-line-drawing-color-on-click-xt54x0
+            selectedSym = hit; selectedSeg = []; selectedAnn = -1;
+
+            selectedSym = hit; selectedSeg = null; selectedAnn = -1;
+DevSchmeaticHtml
+ DevSchmeaticHtml
             draggingSym = true; suppressNextClick = true;
             syncSymbolUI();
             redrawOverlay();
@@ -118,7 +126,15 @@ function setupEventListeners() {
 
         hit = hitTestAnnotation(ix, iy);
         if (hit >= 0) {
+ codex/fix-line-drawing-color-on-click-874em8
             selectedAnn = hit; selectedSym = -1; selectedSeg = [];
+
+codex/fix-line-drawing-color-on-click-xt54x0
+            selectedAnn = hit; selectedSym = -1; selectedSeg = [];
+
+            selectedAnn = hit; selectedSym = -1; selectedSeg = null;
+DevSchmeaticHtml
+ DevSchmeaticHtml
             draggingAnn = true; annOffset.dx = ix - annotations[hit].x; annOffset.dy = iy - annotations[hit].y;
             suppressNextClick = true;
             redrawOverlay();
@@ -127,9 +143,19 @@ function setupEventListeners() {
 
         hit = hitTestSegment(ix, iy);
         if (hit) {
+ codex/fix-line-drawing-color-on-click-874em8
             // Collect all connected segments to highlight entire path
             selectedSeg = collectConnectedSegments(hit.layer, hit.index);
             selectedSym = -1; selectedAnn = -1;
+
+ codex/fix-line-drawing-color-on-click-xt54x0
+            // Collect all connected segments to highlight entire path
+            selectedSeg = collectConnectedSegments(hit.layer, hit.index);
+            selectedSym = -1; selectedAnn = -1;
+
+            selectedSeg = hit; selectedSym = -1; selectedAnn = -1;
+ DevSchmeaticHtml
+ DevSchmeaticHtml
             // Highlight segment without starting a drag operation
             suppressNextClick = true;
             redrawOverlay();

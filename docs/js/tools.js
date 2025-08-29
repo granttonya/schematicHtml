@@ -76,12 +76,17 @@ function pointToSegmentDistance(px, py, p1, p2) {
     const clamped = Math.max(0, Math.min(1, t));
     const x = x1 + clamped * dx, y = y1 + clamped * dy;
     return Math.hypot(px - x, py - y);
+codex/fix-line-drawing-color-on-click-874em8
+
+ codex/fix-line-drawing-color-on-click-xt54x0
+DevSchmeaticHtml
 }
 
 function pointsEqual(p1, p2, tol = 0.1) {
     return Math.abs(p1.x - p2.x) <= tol && Math.abs(p1.y - p2.y) <= tol;
 }
 
+codex/fix-line-drawing-color-on-click-874em8
 // Debug helper to log tracing details into History panel
 function traceDebug(msg) {
     try {
@@ -93,6 +98,8 @@ function traceDebug(msg) {
     }
 }
 
+
+ DevSchmeaticHtml
 function collectConnectedSegments(layerIndex, startIndex) {
     const layer = layers[layerIndex];
     if (!layer) return [];
@@ -117,6 +124,11 @@ function collectConnectedSegments(layerIndex, startIndex) {
         }
     }
     return result;
+ codex/fix-line-drawing-color-on-click-874em8
+
+
+DevSchmeaticHtml
+ DevSchmeaticHtml
 }
 
 // Image analysis
@@ -208,6 +220,7 @@ function chooseNextStep(px, py, cx, cy, threshold) {
             }
         }
     }
+ codex/fix-line-drawing-color-on-click-874em8
     if (cands.length === 0) {
         traceDebug(`endpoint at (${cx},${cy})`);
         return null;
@@ -216,6 +229,10 @@ function chooseNextStep(px, py, cx, cy, threshold) {
         traceDebug(`junction at (${cx},${cy}) comps=${comps}`);
         return null;
     }
+
+    if (cands.length === 0) return null;
+    if (comps !== 1) return null;
+ DevSchmeaticHtml
     const dirx = cx - px, diry = cy - py;
     const dirLen = Math.hypot(dirx, diry) || 1;
     let best = null, bestScore = -Infinity;
@@ -226,7 +243,10 @@ function chooseNextStep(px, py, cx, cy, threshold) {
         const score = cos - 0.05 * lateral;
         if (score > bestScore) { bestScore = score; best = c; }
     }
+ codex/fix-line-drawing-color-on-click-874em8
     if (best) traceDebug(`step to (${best.x},${best.y})`);
+
+ DevSchmeaticHtml
     return best ? { x: best.x, y: best.y } : null;
 }
 
@@ -236,6 +256,7 @@ function walkFrom(px, py, cx, cy, threshold) {
     const MAX_STEPS = config.pixelLimit;
     while (steps++ < MAX_STEPS) {
         const next = chooseNextStep(px, py, cx, cy, threshold);
+ codex/fix-line-drawing-color-on-click-874em8
         if (!next) {
             traceDebug(`stop at (${cx},${cy}) after ${steps} steps`);
             break;
@@ -244,12 +265,19 @@ function walkFrom(px, py, cx, cy, threshold) {
         path.push({ x: cx, y: cy });
     }
     if (steps >= MAX_STEPS) traceDebug(`max steps ${MAX_STEPS} reached at (${cx},${cy})`);
+
+        if (!next) break;
+        px = cx; py = cy; cx = next.x; cy = next.y;
+        path.push({ x: cx, y: cy });
+    }
+ DevSchmeaticHtml
     return path;
 }
 
 function traceSegment(ix, iy) {
     if (ix < 0 || iy < 0 || ix >= imgW || iy >= imgH) return [];
     const threshold = config.thresh;
+ codex/fix-line-drawing-color-on-click-874em8
     traceDebug(`click at (${ix|0},${iy|0})`);
     const start = findNearestInkRobust(ix | 0, iy | 0, config.snapRadius, threshold);
     if (!start) {
@@ -265,6 +293,16 @@ function traceSegment(ix, iy) {
         traceDebug(`walk from (${start.x},${start.y}) toward (${n.x},${n.y})`);
         path.push(...walkFrom(start.x, start.y, n.x, n.y, threshold));
         traceDebug(`path length ${path.length}`);
+
+    const start = findNearestInkRobust(ix | 0, iy | 0, config.snapRadius, threshold);
+    if (!start) return [];
+    const paths = [];
+    const neigh = neighbors(start.x, start.y, threshold);
+    if (neigh.length === 0) return paths;
+    for (const n of neigh.slice(0, 2)) {
+        const path = [{ x: start.x, y: start.y }];
+        path.push(...walkFrom(start.x, start.y, n.x, n.y, threshold));
+DevSchmeaticHtml
         paths.push(path);
     }
     return paths;
