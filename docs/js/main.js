@@ -101,7 +101,7 @@ function setupEventListeners() {
 
         let hit = hitTestSymbol(ix, iy);
         if (hit >= 0) {
-            selectedSym = hit; selectedSeg = -1; selectedAnn = -1;
+            selectedSym = hit; selectedSeg = null; selectedAnn = -1;
             draggingSym = true; suppressNextClick = true;
             syncSymbolUI();
             redrawOverlay();
@@ -110,7 +110,7 @@ function setupEventListeners() {
 
         hit = hitTestAnnotation(ix, iy);
         if (hit >= 0) {
-            selectedAnn = hit; selectedSym = -1; selectedSeg = -1;
+            selectedAnn = hit; selectedSym = -1; selectedSeg = null;
             draggingAnn = true; annOffset.dx = ix - annotations[hit].x; annOffset.dy = iy - annotations[hit].y;
             suppressNextClick = true;
             redrawOverlay();
@@ -118,9 +118,9 @@ function setupEventListeners() {
         }
 
         hit = hitTestSegment(ix, iy);
-        if (hit >= 0) {
+        if (hit) {
             selectedSeg = hit; selectedSym = -1; selectedAnn = -1;
-            draggingSeg = true; lastWorld = {x:ix, y:iy};
+            // Highlight segment without starting a drag operation
             suppressNextClick = true;
             redrawOverlay();
             return;
