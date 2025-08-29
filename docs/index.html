@@ -1619,6 +1619,17 @@ function hitTestSegment(ix,iy){
     const s=segments[i];
     const L=layers[s.layer];
     if(!L || !L.visible) continue;
+ codex/find-better-mouse-click-detection-method-sqdvfk
+    hitCtx.lineWidth=(s.thick||L.thickness||1)/viewScale;
+    hitCtx.lineCap='round';
+    hitCtx.lineJoin='round';
+    hitCtx.beginPath();
+    hitCtx.moveTo(s.x1,s.y1);
+    hitCtx.lineTo(s.x2,s.y2);
+    if(hitCtx.isPointInStroke(ix,iy)) return i;
+  }
+  return -1;
+
     const tol=Math.max((s.thick||1)/2,0.5);
     const d=distPointToSegment(ix,iy,s.x1,s.y1,s.x2,s.y2);
     if(d<=tol) return i;
@@ -1634,6 +1645,7 @@ function distPointToSegment(px,py,x1,y1,x2,y2){
   const b = c1 / c2;
   const bx = x1 + b*vx, by = y1 + b*vy;
   return Math.hypot(px-bx, py-by);
+ DevSchmeaticHtml
 }
 
 function eraseAt(ix,iy,size){ if(!layers.length) return; clearMask(layers[activeLayer].mask, Math.round(ix), Math.round(iy), Math.max(1, Math.round(size/2))); }
