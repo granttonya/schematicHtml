@@ -112,6 +112,23 @@ function redrawOverlay() {
         }
     }
 
+    // Draw traced highlight paths
+    if (highlightPaths.length > 0) {
+        octx.strokeStyle = config.color;
+        octx.lineWidth = config.thickness / viewScale;
+        octx.lineCap = 'round';
+        octx.lineJoin = 'round';
+        for (const path of highlightPaths) {
+            if (path.length < 2) continue;
+            octx.beginPath();
+            octx.moveTo(path[0].x, path[0].y);
+            for (let i = 1; i < path.length; i++) {
+                octx.lineTo(path[i].x, path[i].y);
+            }
+            octx.stroke();
+        }
+    }
+
     // Draw line preview
     if (lineMode && linePreview) {
         octx.strokeStyle = config.color;

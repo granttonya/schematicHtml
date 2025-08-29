@@ -142,10 +142,103 @@ function findNearestInkRobust(ix, iy, searchRadius, threshold) {
     return null;
 }
 
-function trace(startX, startY, threshold, limit) {
-    // Placeholder for trace logic
-    console.log(`Tracing from ${startX}, ${startY}`);
-    return [];
+function neighbors(x, y, threshold, excludeX = null, excludeY = null) {
+    const out = [];
+    for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= imgW || ny >= imgH) continue;
+            if (excludeX !== null && nx === excludeX && ny === excludeY) continue;
+            if (isInk(nx, ny, threshold)) out.push({ x: nx, y: ny });
+        }
+    }
+    return out;
+}
+
+function chooseNextStep(px, py, cx, cy, threshold) {
+    const ring = Array.from({ length: 3 }, () => [0, 0, 0]);
+    const cands = [];
+    for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const nx = cx + dx, ny = cy + dy;
+            if (nx < 0 || ny < 0 || nx >= imgW || ny >= imgH) continue;
+            if (nx === px && ny === py) continue;
+            if (isInk(nx, ny, threshold)) {
+                ring[dy + 1][dx + 1] = 1;
+                cands.push({ x: nx, y: ny, dx, dy });
+            }
+        }
+    }
+    let comps = 0;
+    const seen = Array.from({ length: 3 }, () => [0, 0, 0]);
+    const dirs = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+    function flood(i, j) {
+        const q = [[i, j]];
+        seen[i][j] = 1;
+        while (q.length) {
+            const [a, b] = q.shift();
+            for (const [di, dj] of dirs) {
+                const ni = a + di, nj = b + dj;
+                if (ni < 0 || nj < 0 || ni > 2 || nj > 2) continue;
+                if (!seen[ni][nj] && ring[ni][nj]) {
+                    seen[ni][nj] = 1;
+                    q.push([ni, nj]);
+                }
+            }
+        }
+    }
+    for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+            if (ring[i][j] && !seen[i][j]) {
+                comps++;
+                flood(i, j);
+            }
+        }
+    }
+    if (cands.length === 0) return null;
+    if (comps !== 1) return null;
+    const dirx = cx - px, diry = cy - py;
+    const dirLen = Math.hypot(dirx, diry) || 1;
+    let best = null, bestScore = -Infinity;
+    for (const c of cands) {
+        const clen = Math.hypot(c.dx, c.dy) || 1;
+        const cos = (dirx * c.dx + diry * c.dy) / (dirLen * clen);
+        const lateral = Math.abs(dirx * c.dy - diry * c.dx) / (dirLen * clen);
+        const score = cos - 0.05 * lateral;
+        if (score > bestScore) { bestScore = score; best = c; }
+    }
+    return best ? { x: best.x, y: best.y } : null;
+}
+
+function walkFrom(px, py, cx, cy, threshold) {
+    const path = [{ x: cx, y: cy }];
+    let steps = 0;
+    const MAX_STEPS = config.pixelLimit;
+    while (steps++ < MAX_STEPS) {
+        const next = chooseNextStep(px, py, cx, cy, threshold);
+        if (!next) break;
+        px = cx; py = cy; cx = next.x; cy = next.y;
+        path.push({ x: cx, y: cy });
+    }
+    return path;
+}
+
+function traceSegment(ix, iy) {
+    if (ix < 0 || iy < 0 || ix >= imgW || iy >= imgH) return [];
+    const threshold = config.thresh;
+    const start = findNearestInkRobust(ix | 0, iy | 0, config.snapRadius, threshold);
+    if (!start) return [];
+    const paths = [];
+    const neigh = neighbors(start.x, start.y, threshold);
+    if (neigh.length === 0) return paths;
+    for (const n of neigh.slice(0, 2)) {
+        const path = [{ x: start.x, y: start.y }];
+        path.push(...walkFrom(start.x, start.y, n.x, n.y, threshold));
+        paths.push(path);
+    }
+    return paths;
 }
 
 /* ===============================================================

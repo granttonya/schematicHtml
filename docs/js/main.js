@@ -50,6 +50,7 @@ function resetView() {
     panX = view.width / 2;
     panY = view.height / 2;
     viewScale = 1.0;
+    highlightPaths = [];
     drawBase();
     redrawOverlay();
 }
@@ -95,6 +96,13 @@ function setupEventListeners() {
             lineStart = { x: sx, y: sy };
             lineEnd = { x: sx, y: sy };
             linePreview = { x1: lineStart.x, y1: lineStart.y, x2: sx, y2: sy };
+            redrawOverlay();
+            return;
+        }
+
+        if (highlightMode) {
+            if (e.shiftKey) highlightPaths = [];
+            else highlightPaths = traceSegment(ix, iy);
             redrawOverlay();
             return;
         }

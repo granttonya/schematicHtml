@@ -37,6 +37,7 @@ let lineEnd = null;
 let linePreview = null;
 let lastErase = null;
 let suppressNextClick = false;
+let highlightPaths = [];
 
 // Data
 let layers = [];
