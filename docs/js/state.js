@@ -20,7 +20,10 @@ let retypeMode = false;
 
 // Selections and dragging
 let selectedSym = -1;
-let selectedSeg = -1;
+// Track selected segments as an array of objects { layer, index }
+// rather than a single index so we can highlight entire connected paths.
+// An empty array means no segment is selected.
+let selectedSeg = [];
 let selectedAnn = -1;
 let draggingSym = false;
 let draggingSeg = false;

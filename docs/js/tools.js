@@ -47,8 +47,65 @@ function hitTestAnnotation(ix, iy) {
 }
 
 function hitTestSegment(ix, iy) {
-    // Simplified hit test for segments
-    return -1;
+    // Return the first segment within a small distance of the point.
+    const tolerance = 5; // pixels in image space
+    for (let li = 0; li < layers.length; li++) {
+        const layer = layers[li];
+        if (!layer.visible) continue;
+        for (let si = 0; si < layer.segments.length; si++) {
+            const seg = layer.segments[si];
+            for (let i = 0; i < seg.points.length - 1; i++) {
+                const p1 = seg.points[i];
+                const p2 = seg.points[i + 1];
+                if (pointToSegmentDistance(ix, iy, p1, p2) <= tolerance) {
+                    return { layer: li, index: si };
+                }
+            }
+        }
+    }
+    return null;
+}
+
+function pointToSegmentDistance(px, py, p1, p2) {
+    const x1 = p1.x, y1 = p1.y, x2 = p2.x, y2 = p2.y;
+    const dx = x2 - x1, dy = y2 - y1;
+    if (dx === 0 && dy === 0) {
+        return Math.hypot(px - x1, py - y1);
+    }
+    const t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy);
+    const clamped = Math.max(0, Math.min(1, t));
+    const x = x1 + clamped * dx, y = y1 + clamped * dy;
+    return Math.hypot(px - x, py - y);
+}
+
+function pointsEqual(p1, p2, tol = 0.1) {
+    return Math.abs(p1.x - p2.x) <= tol && Math.abs(p1.y - p2.y) <= tol;
+}
+
+function collectConnectedSegments(layerIndex, startIndex) {
+    const layer = layers[layerIndex];
+    if (!layer) return [];
+    const result = [];
+    const visited = new Set();
+    const stack = [startIndex];
+    while (stack.length) {
+        const idx = stack.pop();
+        if (visited.has(idx)) continue;
+        visited.add(idx);
+        result.push({ layer: layerIndex, index: idx });
+        const seg = layer.segments[idx];
+        if (!seg || seg.points.length === 0) continue;
+        const endpoints = [seg.points[0], seg.points[seg.points.length - 1]];
+        for (let i = 0; i < layer.segments.length; i++) {
+            if (visited.has(i) || i === idx) continue;
+            const other = layer.segments[i];
+            if (!other || other.points.length === 0) continue;
+            const otherEnds = [other.points[0], other.points[other.points.length - 1]];
+            const connected = endpoints.some(p1 => otherEnds.some(p2 => pointsEqual(p1, p2)));
+            if (connected) stack.push(i);
+        }
+    }
+    return result;
 }
 
 // Image analysis
