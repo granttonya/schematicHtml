@@ -47,8 +47,35 @@ function hitTestAnnotation(ix, iy) {
 }
 
 function hitTestSegment(ix, iy) {
-    // Simplified hit test for segments
-    return -1;
+    // Return the first segment within a small distance of the point.
+    const tolerance = 5; // pixels in image space
+    for (let li = 0; li < layers.length; li++) {
+        const layer = layers[li];
+        if (!layer.visible) continue;
+        for (let si = 0; si < layer.segments.length; si++) {
+            const seg = layer.segments[si];
+            for (let i = 0; i < seg.points.length - 1; i++) {
+                const p1 = seg.points[i];
+                const p2 = seg.points[i + 1];
+                if (pointToSegmentDistance(ix, iy, p1, p2) <= tolerance) {
+                    return { layer: li, index: si };
+                }
+            }
+        }
+    }
+    return null;
+}
+
+function pointToSegmentDistance(px, py, p1, p2) {
+    const x1 = p1.x, y1 = p1.y, x2 = p2.x, y2 = p2.y;
+    const dx = x2 - x1, dy = y2 - y1;
+    if (dx === 0 && dy === 0) {
+        return Math.hypot(px - x1, py - y1);
+    }
+    const t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy);
+    const clamped = Math.max(0, Math.min(1, t));
+    const x = x1 + clamped * dx, y = y1 + clamped * dy;
+    return Math.hypot(px - x, py - y);
 }
 
 // Image analysis

@@ -20,7 +20,10 @@ let retypeMode = false;
 
 // Selections and dragging
 let selectedSym = -1;
-let selectedSeg = -1;
+// Track a selected segment as an object { layer, index }
+// rather than a simple index so we know which layer it belongs to.
+// null means no segment is selected.
+let selectedSeg = null;
 let selectedAnn = -1;
 let draggingSym = false;
 let draggingSeg = false;

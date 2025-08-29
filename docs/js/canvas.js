@@ -57,19 +57,25 @@ function drawBase() {
     ctx.restore();
 }
 
-function drawLayer(layer, ctx) {
+function drawLayer(layer, ctx, layerIndex) {
     if (!layer.visible) return;
     ctx.globalAlpha = layer.opacity;
-    ctx.strokeStyle = layer.color;
     ctx.lineWidth = layer.thickness / viewScale;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    for (const seg of layer.segments) {
+    for (let si = 0; si < layer.segments.length; si++) {
+        const seg = layer.segments[si];
         ctx.beginPath();
         for (let i = 0; i < seg.points.length; i++) {
             const pt = seg.points[i];
             if (i === 0) ctx.moveTo(pt.x, pt.y);
             else ctx.lineTo(pt.x, pt.y);
+        }
+        // Highlight selected segment in cyan; otherwise use layer color
+        if (selectedSeg && selectedSeg.layer === layerIndex && selectedSeg.index === si) {
+            ctx.strokeStyle = 'cyan';
+        } else {
+            ctx.strokeStyle = layer.color;
         }
         ctx.stroke();
     }
@@ -85,9 +91,7 @@ function redrawOverlay() {
     applyViewTransform(octx);
 
     // Draw all layers
-    for (const layer of layers) {
-        drawLayer(layer, octx);
-    }
+    layers.forEach((layer, idx) => drawLayer(layer, octx, idx));
 
     // Draw symbols
     if (symbols.length > 0) {
