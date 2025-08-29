@@ -20,17 +20,9 @@ let retypeMode = false;
 
 // Selections and dragging
 let selectedSym = -1;
- codex/fix-line-drawing-color-on-click-xt54x0
-// Track selected segments as an array of objects { layer, index }
-// rather than a single index so we can highlight entire connected paths.
-// An empty array means no segment is selected.
-let selectedSeg = [];
-
-// Track a selected segment as an object { layer, index }
-// rather than a simple index so we know which layer it belongs to.
+// Track a selected segment as an object { layer, index }.
 // null means no segment is selected.
 let selectedSeg = null;
-DevSchmeaticHtml
 let selectedAnn = -1;
 let draggingSym = false;
 let draggingSeg = false;
