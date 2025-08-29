@@ -1,16 +1,10 @@
 // Main application entry point
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize canvases
-    const view = document.getElementById('view');
-    const overlay = document.getElementById('overlay');
-    const ctx = view.getContext('2d');
-    const octx = overlay.getContext('2d');
-
-    // Make contexts and canvases globally available for other modules
-    window.view = view;
-    window.overlay = overlay;
-    window.ctx = ctx;
-    window.octx = octx;
+    view = document.getElementById('view');
+    overlay = document.getElementById('overlay');
+    ctx = view.getContext('2d');
+    octx = overlay.getContext('2d');
 
     // Initial setup
     setCanvasSizeToContainer();
@@ -32,8 +26,16 @@ function loadImage(url) {
         imgH = img.height;
         createImageBitmap(img).then(bitmap => {
             imgBitmap = bitmap;
-            const offscreenCanvas = new OffscreenCanvas(imgW, imgH);
-            const offscreenCtx = offscreenCanvas.getContext('2d');
+            let offscreenCanvas, offscreenCtx;
+            if (typeof OffscreenCanvas !== 'undefined') {
+                offscreenCanvas = new OffscreenCanvas(imgW, imgH);
+                offscreenCtx = offscreenCanvas.getContext('2d');
+            } else {
+                offscreenCanvas = document.createElement('canvas');
+                offscreenCanvas.width = imgW;
+                offscreenCanvas.height = imgH;
+                offscreenCtx = offscreenCanvas.getContext('2d');
+            }
             offscreenCtx.drawImage(imgBitmap, 0, 0);
             rawImageData = offscreenCtx.getImageData(0, 0, imgW, imgH);
             imgLoaded = true;
@@ -109,12 +111,11 @@ function setupEventListeners() {
 
         let hit = hitTestSymbol(ix, iy);
         if (hit >= 0) {
- codex/fix-line-drawing-color-on-click-xt54x0
-            selectedSym = hit; selectedSeg = []; selectedAnn = -1;
-
-            selectedSym = hit; selectedSeg = null; selectedAnn = -1;
-DevSchmeaticHtml
-            draggingSym = true; suppressNextClick = true;
+            selectedSym = hit;
+            selectedSeg = null;
+            selectedAnn = -1;
+            draggingSym = true;
+            suppressNextClick = true;
             syncSymbolUI();
             redrawOverlay();
             return;
@@ -122,12 +123,12 @@ DevSchmeaticHtml
 
         hit = hitTestAnnotation(ix, iy);
         if (hit >= 0) {
-codex/fix-line-drawing-color-on-click-xt54x0
-            selectedAnn = hit; selectedSym = -1; selectedSeg = [];
-
-            selectedAnn = hit; selectedSym = -1; selectedSeg = null;
-DevSchmeaticHtml
-            draggingAnn = true; annOffset.dx = ix - annotations[hit].x; annOffset.dy = iy - annotations[hit].y;
+            selectedAnn = hit;
+            selectedSym = -1;
+            selectedSeg = null;
+            draggingAnn = true;
+            annOffset.dx = ix - annotations[hit].x;
+            annOffset.dy = iy - annotations[hit].y;
             suppressNextClick = true;
             redrawOverlay();
             return;
@@ -135,13 +136,9 @@ DevSchmeaticHtml
 
         hit = hitTestSegment(ix, iy);
         if (hit) {
- codex/fix-line-drawing-color-on-click-xt54x0
-            // Collect all connected segments to highlight entire path
-            selectedSeg = collectConnectedSegments(hit.layer, hit.index);
-            selectedSym = -1; selectedAnn = -1;
-
-            selectedSeg = hit; selectedSym = -1; selectedAnn = -1;
- DevSchmeaticHtml
+            selectedSeg = hit;
+            selectedSym = -1;
+            selectedAnn = -1;
             // Highlight segment without starting a drag operation
             suppressNextClick = true;
             redrawOverlay();

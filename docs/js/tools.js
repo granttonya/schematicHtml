@@ -12,6 +12,14 @@ function imgToScreen(ix, iy) {
     return [x, y];
 }
 
+// Offscreen context used for precise hit testing
+const hitCtx = (() => {
+    if (typeof OffscreenCanvas !== 'undefined') {
+        return new OffscreenCanvas(1, 1).getContext('2d');
+    }
+    return document.createElement('canvas').getContext('2d');
+})();
+
 // Snapping
 function snapPosition(ix, iy) {
     if (config.snapToGrid) {
@@ -46,20 +54,41 @@ function hitTestAnnotation(ix, iy) {
     return -1;
 }
 
+function ensureSegmentPath(seg) {
+    if (seg.path && seg.bbox) return;
+    const path = new Path2D();
+    path.moveTo(seg.points[0].x, seg.points[0].y);
+    let minX = seg.points[0].x, maxX = minX;
+    let minY = seg.points[0].y, maxY = minY;
+    for (let i = 1; i < seg.points.length; i++) {
+        const pt = seg.points[i];
+        path.lineTo(pt.x, pt.y);
+        if (pt.x < minX) minX = pt.x;
+        if (pt.x > maxX) maxX = pt.x;
+        if (pt.y < minY) minY = pt.y;
+        if (pt.y > maxY) maxY = pt.y;
+    }
+    seg.path = path;
+    seg.bbox = { minX, maxX, minY, maxY };
+}
+
 function hitTestSegment(ix, iy) {
-    // Return the first segment within a small distance of the point.
-    const tolerance = 5; // pixels in image space
-    for (let li = 0; li < layers.length; li++) {
+    // Use a cached Path2D and bounding box check for accurate hit testing
+    for (let li = layers.length - 1; li >= 0; li--) {
         const layer = layers[li];
         if (!layer.visible) continue;
-        for (let si = 0; si < layer.segments.length; si++) {
+        for (let si = layer.segments.length - 1; si >= 0; si--) {
             const seg = layer.segments[si];
-            for (let i = 0; i < seg.points.length - 1; i++) {
-                const p1 = seg.points[i];
-                const p2 = seg.points[i + 1];
-                if (pointToSegmentDistance(ix, iy, p1, p2) <= tolerance) {
-                    return { layer: li, index: si };
-                }
+            if (!seg || seg.points.length < 2) continue;
+            ensureSegmentPath(seg);
+            const half = (layer.thickness / viewScale) / 2;
+            const { minX, maxX, minY, maxY } = seg.bbox;
+            if (ix < minX - half || ix > maxX + half || iy < minY - half || iy > maxY + half) continue;
+            hitCtx.lineWidth = layer.thickness / viewScale;
+            hitCtx.lineCap = 'round';
+            hitCtx.lineJoin = 'round';
+            if (hitCtx.isPointInStroke(seg.path, ix, iy)) {
+                return { layer: li, index: si };
             }
         }
     }
@@ -76,7 +105,6 @@ function pointToSegmentDistance(px, py, p1, p2) {
     const clamped = Math.max(0, Math.min(1, t));
     const x = x1 + clamped * dx, y = y1 + clamped * dy;
     return Math.hypot(px - x, py - y);
- codex/fix-line-drawing-color-on-click-xt54x0
 }
 
 function pointsEqual(p1, p2, tol = 0.1) {
@@ -107,8 +135,6 @@ function collectConnectedSegments(layerIndex, startIndex) {
         }
     }
     return result;
-
-DevSchmeaticHtml
 }
 
 // Image analysis
