@@ -73,13 +73,32 @@ function ensureSegmentPath(seg) {
 }
 
 function hitTestSegment(ix, iy) {
+ codex/find-better-mouse-click-detection-method-3x7yw3
     // Use a cached Path2D and bounding box check for accurate hit testing
+
+ codex/find-better-mouse-click-detection-method-sip7ac
+    // Use a cached Path2D and bounding box check for accurate hit testing
+
+    // Use the canvas API to determine if the point lies within a stroked path
+ codex/find-better-mouse-click-detection-method-sqdvfk
+
+ codex/find-better-mouse-click-detection-method-40nq5x
+
+    const tol = 5 / viewScale; // constant screen-space tolerance
+ DevSchmeaticHtml
+ DevSchmeaticHtml
+ DevSchmeaticHtml
+ DevSchmeaticHtml
     for (let li = layers.length - 1; li >= 0; li--) {
         const layer = layers[li];
         if (!layer.visible) continue;
         for (let si = layer.segments.length - 1; si >= 0; si--) {
             const seg = layer.segments[si];
             if (!seg || seg.points.length < 2) continue;
+ codex/find-better-mouse-click-detection-method-3x7yw3
+
+ codex/find-better-mouse-click-detection-method-sip7ac
+DevSchmeaticHtml
             ensureSegmentPath(seg);
             const half = (layer.thickness / viewScale) / 2;
             const { minX, maxX, minY, maxY } = seg.bbox;
@@ -88,6 +107,30 @@ function hitTestSegment(ix, iy) {
             hitCtx.lineCap = 'round';
             hitCtx.lineJoin = 'round';
             if (hitCtx.isPointInStroke(seg.path, ix, iy)) {
+codex/find-better-mouse-click-detection-method-3x7yw3
+
+
+ codex/find-better-mouse-click-detection-method-sqdvfk
+            // Use the segment's actual thickness so hits only register on the line itself
+            hitCtx.lineWidth = layer.thickness / viewScale;
+
+ codex/find-better-mouse-click-detection-method-40nq5x
+            // Use the segment's actual thickness so hits only register on the line itself
+            hitCtx.lineWidth = layer.thickness / viewScale;
+
+            hitCtx.lineWidth = layer.thickness / viewScale + 2 * tol;
+ DevSchmeaticHtml
+ DevSchmeaticHtml
+            hitCtx.lineCap = 'round';
+            hitCtx.lineJoin = 'round';
+            hitCtx.beginPath();
+            hitCtx.moveTo(seg.points[0].x, seg.points[0].y);
+            for (let i = 1; i < seg.points.length; i++) {
+                hitCtx.lineTo(seg.points[i].x, seg.points[i].y);
+            }
+            if (hitCtx.isPointInStroke(ix, iy)) {
+ DevSchmeaticHtml
+ DevSchmeaticHtml
                 return { layer: li, index: si };
             }
         }
