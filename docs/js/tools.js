@@ -92,7 +92,7 @@ function hitTestSegment(x, y) {
             const seg = layer.segments[si];
             if (!seg || seg.points.length < 2) continue;
             ensureSegmentPath(seg);
-            const half = (layer.thickness / viewScale) / 2;
+            const half = (layer.thickness / viewScale) / 2 + tol;
             const { minX, maxX, minY, maxY } = seg.bbox;
             if (ix < minX - half || ix > maxX + half || iy < minY - half || iy > maxY + half) continue;
             // Use the segment's actual thickness so hits only register on the line itself
