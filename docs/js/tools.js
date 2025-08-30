@@ -72,8 +72,21 @@ function ensureSegmentPath(seg) {
     seg.bbox = { minX, maxX, minY, maxY };
 }
 
+ codex/debug-and-fix-code-fg24ox
 function hitTestSegment(ix, iy) {
     const [sx, sy] = imgToScreen(ix, iy);
+
+function hitTestSegment(x, y) {
+    // Accept either screen or image coordinates.
+    // If the point appears to be in image space, convert it.
+    let sx = x, sy = y, ix = x, iy = y;
+    if (x >= 0 && x <= view.width && y >= 0 && y <= view.height) {
+        [ix, iy] = screenToImg(x, y);
+    } else {
+        [sx, sy] = imgToScreen(x, y);
+    }
+
+DevSchmeaticHtml
     hitCtx.save();
     applyViewTransform(hitCtx);
     const tol = 5 / viewScale; // constant screen-space tolerance
@@ -87,6 +100,10 @@ function hitTestSegment(ix, iy) {
             const half = (layer.thickness / viewScale) / 2 + tol;
             const { minX, maxX, minY, maxY } = seg.bbox;
             if (ix < minX - half || ix > maxX + half || iy < minY - half || iy > maxY + half) continue;
+ codex/debug-and-fix-code-fg24ox
+
+            // Use the segment's actual thickness so hits only register on the line itself
+ DevSchmeaticHtml
             hitCtx.lineWidth = layer.thickness / viewScale + 2 * tol;
             hitCtx.lineCap = 'round';
             hitCtx.lineJoin = 'round';
