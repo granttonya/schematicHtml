@@ -134,7 +134,8 @@ function setupEventListeners() {
             return;
         }
 
-        hit = hitTestSegment(e.offsetX, e.offsetY);
+        const [hx, hy] = screenToImg(e.offsetX, e.offsetY);
+        hit = hitTestSegment(hx, hy);
         if (hit) {
             selectedSeg = hit;
             selectedSym = -1;
